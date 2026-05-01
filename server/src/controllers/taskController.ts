@@ -6,9 +6,25 @@ import { ZodError } from 'zod';
 // GET /api/tasks — List all tasks with optional filters
 export const getAllTasks = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { status, priority, sort = '-createdAt', search, tag } = req.query;
+    const { status, priority, sort = '-createdAt', search, tag, view = 'active' } = req.query;
 
     const filter: Record<string, unknown> = {};
+
+    // View Filtering Logic
+    if (view === 'trash') {
+      filter.isDeleted = true;
+    } else if (view === 'archive') {
+      filter.isDeleted = false; // Show everything not in trash
+    } else {
+      // view === 'active'
+      filter.isDeleted = false;
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      filter.$or = [
+        { isLongTerm: true }, // Keep long-term tasks always
+        { createdAt: { $gt: oneDayAgo } } // Keep tasks created within the last 24 hours
+      ];
+    }
+
     if (status && (status === 'pending' || status === 'completed')) {
       filter.status = status;
     }
@@ -96,8 +112,28 @@ export const updateTask = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-// DELETE /api/tasks/:id — Delete a task
+// DELETE /api/tasks/:id — Soft delete a task (move to trash)
 export const deleteTask = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const task = await Task.findByIdAndUpdate(
+      req.params.id,
+      { isDeleted: true, deletedAt: new Date() },
+      { new: true }
+    );
+
+    if (!task) {
+      res.status(404).json({ success: false, error: 'Task not found' });
+      return;
+    }
+
+    res.json({ success: true, message: 'Task moved to trash' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE /api/tasks/:id/permanent — Permanently delete a task
+export const permanentlyDeleteTask = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const task = await Task.findByIdAndDelete(req.params.id);
 
@@ -106,7 +142,7 @@ export const deleteTask = async (req: Request, res: Response, next: NextFunction
       return;
     }
 
-    res.json({ success: true, message: 'Task deleted' });
+    res.json({ success: true, message: 'Task permanently deleted' });
   } catch (error) {
     next(error);
   }

@@ -35,6 +35,28 @@ const taskSchema = new Schema<ITaskDocument>(
         message: 'A task can have at most 5 tags',
       },
     },
+    estimatedMinutes: {
+      type: Number,
+      default: 0,
+      min: [0, 'Estimated minutes cannot be negative'],
+    },
+    subtasks: {
+      type: [
+        {
+          title: { type: String, required: true, trim: true },
+          isCompleted: { type: Boolean, default: false },
+        },
+      ],
+      default: [],
+    },
+    isLongTerm: {
+      type: Boolean,
+      default: false,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
     dueDate: {
       type: Date,
       default: null,
@@ -43,13 +65,19 @@ const taskSchema = new Schema<ITaskDocument>(
       type: Date,
       default: null,
     },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true, // adds createdAt and updatedAt
-  }
+  },
 );
 
 // Indexes for efficient queries
+taskSchema.index({ isDeleted: 1, status: 1 }); // Great for active vs completed filters
+taskSchema.index({ isDeleted: 1, createdAt: -1 }); // Great for recent active tasks
 taskSchema.index({ status: 1 });
 taskSchema.index({ createdAt: -1 });
 taskSchema.index({ completedAt: -1 });

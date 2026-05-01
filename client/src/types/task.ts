@@ -1,6 +1,12 @@
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskStatus = 'pending' | 'completed';
 
+export interface Subtask {
+  _id?: string;
+  title: string;
+  isCompleted: boolean;
+}
+
 export interface Task {
   _id: string;
   title: string;
@@ -8,9 +14,14 @@ export interface Task {
   priority: TaskPriority;
   status: TaskStatus;
   tags: string[];
+  estimatedMinutes: number;
+  subtasks: Subtask[];
+  isLongTerm: boolean;
+  isDeleted: boolean;
   dueDate?: string;
   createdAt: string;
   completedAt?: string;
+  deletedAt?: string;
   updatedAt: string;
 }
 
@@ -19,6 +30,9 @@ export interface CreateTaskPayload {
   description?: string;
   priority: TaskPriority;
   tags?: string[];
+  estimatedMinutes?: number;
+  subtasks?: { title: string; isCompleted: boolean }[];
+  isLongTerm?: boolean;
   dueDate?: string;
 }
 
@@ -28,6 +42,10 @@ export interface UpdateTaskPayload {
   priority?: TaskPriority;
   status?: TaskStatus;
   tags?: string[];
+  estimatedMinutes?: number;
+  subtasks?: Subtask[];
+  isLongTerm?: boolean;
+  isDeleted?: boolean;
   dueDate?: string | null;
 }
 
@@ -47,8 +65,15 @@ export interface StatsOverview {
   createdThisWeek: number;
   completedThisWeek: number;
   overdueTasks: number;
+  createdToday: number;
+  completedToday: number;
   completionRate: number;
   avgTimeToCompleteHours: number;
+  avgCompletedPerDay: number;
+  estimatedVsActualRatio: number;
+  trashCount: number;
+  activeLongTermTasks: number;
+  currentStreak: number;
 }
 
 export interface WeeklyActivity {
@@ -77,4 +102,16 @@ export interface TagBreakdown {
   total: number;
   completed: number;
   pending: number;
+}
+
+export interface DayOfWeekStats {
+  day: string;
+  completed: number;
+}
+
+export interface VelocityStats {
+  priority: string;
+  fastestHours: number | null;
+  longestHours: number | null;
+  avgHours: number | null;
 }

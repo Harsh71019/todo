@@ -2,29 +2,63 @@ import { Request, Response, NextFunction } from 'express';
 import Task from '../models/Task.js';
 
 // GET /api/stats/overview — Summary statistics
-export const getOverview = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getOverview = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     const now = new Date();
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
     startOfWeek.setHours(0, 0, 0, 0);
 
-    const [totalTasks, completedTasks, pendingTasks, createdThisWeek, completedThisWeek, overdueTasks] =
-      await Promise.all([
-        Task.countDocuments(),
-        Task.countDocuments({ status: 'completed' }),
-        Task.countDocuments({ status: 'pending' }),
-        Task.countDocuments({ createdAt: { $gte: startOfWeek } }),
-        Task.countDocuments({ completedAt: { $gte: startOfWeek } }),
-        Task.countDocuments({
-          status: 'pending',
-          dueDate: { $lt: now, $ne: null },
-        }),
-      ]);
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+
+    const [
+      totalTasks,
+      completedTasks,
+      pendingTasks,
+      createdThisWeek,
+      completedThisWeek,
+      overdueTasks,
+      createdToday,
+      completedToday,
+      trashCount,
+      activeLongTermTasks,
+    ] = await Promise.all([
+      Task.countDocuments({ isDeleted: false }),
+      Task.countDocuments({ status: 'completed', isDeleted: false }),
+      Task.countDocuments({ status: 'pending', isDeleted: false }),
+      Task.countDocuments({
+        createdAt: { $gte: startOfWeek },
+        isDeleted: false,
+      }),
+      Task.countDocuments({
+        completedAt: { $gte: startOfWeek },
+        isDeleted: false,
+      }),
+      Task.countDocuments({
+        status: 'pending',
+        dueDate: { $lt: now, $ne: null },
+        isDeleted: false,
+      }),
+      Task.countDocuments({ createdAt: { $gte: today }, isDeleted: false }),
+      Task.countDocuments({ completedAt: { $gte: today }, isDeleted: false }),
+      Task.countDocuments({ isDeleted: true }),
+      Task.countDocuments({ isDeleted: false, isLongTerm: true }),
+    ]);
 
     // Calculate average time to complete (in hours)
     const avgTimeResult = await Task.aggregate([
-      { $match: { status: 'completed', completedAt: { $ne: null } } },
+      {
+        $match: {
+          status: 'completed',
+          completedAt: { $ne: null },
+          isDeleted: false,
+        },
+      },
       {
         $project: {
           timeTaken: { $subtract: ['$completedAt', '$createdAt'] },
@@ -39,9 +73,98 @@ export const getOverview = async (_req: Request, res: Response, next: NextFuncti
     ]);
 
     const avgTimeToCompleteMs = avgTimeResult[0]?.avgTime || 0;
-    const avgTimeToCompleteHours = Math.round(avgTimeToCompleteMs / (1000 * 60 * 60) * 10) / 10;
+    const avgTimeToCompleteHours =
+      Math.round((avgTimeToCompleteMs / (1000 * 60 * 60)) * 10) / 10;
 
-    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const completionRate =
+      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    const oldestTask = await Task.findOne({ isDeleted: false })
+      .sort({ createdAt: 1 })
+      .select('createdAt')
+      .lean();
+    let avgCompletedPerDay = 0;
+    if (oldestTask && completedTasks > 0) {
+      const daysSinceStart = Math.max(
+        1,
+        Math.ceil(
+          (now.getTime() - oldestTask.createdAt.getTime()) /
+            (1000 * 60 * 60 * 24),
+        ),
+      );
+      avgCompletedPerDay =
+        Math.round((completedTasks / daysSinceStart) * 10) / 10;
+    }
+
+    // Calculate Estimated vs Actual Time Ratio
+    const estimationStats = await Task.aggregate([
+      {
+        $match: {
+          status: 'completed',
+          completedAt: { $ne: null },
+          estimatedMinutes: { $gt: 0 },
+          isDeleted: false,
+        },
+      },
+      {
+        $project: {
+          estimated: '$estimatedMinutes',
+          actual: {
+            $divide: [{ $subtract: ['$completedAt', '$createdAt'] }, 60000],
+          }, // Actual in minutes
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalEstimated: { $sum: '$estimated' },
+          totalActual: { $sum: '$actual' },
+        },
+      },
+    ]);
+
+    let estimatedVsActualRatio = 0;
+    if (estimationStats.length > 0 && estimationStats[0].totalActual > 0) {
+      // ratio = estimated / actual (e.g. 1.0 = perfect, 0.5 = took twice as long, 2.0 = took half the time)
+      estimatedVsActualRatio =
+        Math.round(
+          (estimationStats[0].totalEstimated / estimationStats[0].totalActual) *
+            100,
+        ) / 100;
+    }
+
+    // Calculate Current Streak
+    const completedDates = await Task.aggregate([
+      { $match: { status: 'completed', completedAt: { $ne: null }, isDeleted: false } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$completedAt' } }
+        }
+      },
+      { $sort: { _id: -1 } }
+    ]);
+
+    const distinctDates = completedDates.map((d: { _id: string }) => d._id);
+    let currentStreak = 0;
+    
+    const todayStr = new Date().toISOString().split('T')[0];
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    if (distinctDates.includes(todayStr) || distinctDates.includes(yesterdayStr)) {
+      let checkDate = distinctDates.includes(todayStr) ? new Date() : yesterday;
+      
+      while (true) {
+        const checkStr = checkDate.toISOString().split('T')[0];
+        if (distinctDates.includes(checkStr)) {
+          currentStreak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+    }
 
     res.json({
       success: true,
@@ -52,8 +175,15 @@ export const getOverview = async (_req: Request, res: Response, next: NextFuncti
         createdThisWeek,
         completedThisWeek,
         overdueTasks,
+        createdToday,
+        completedToday,
         completionRate,
         avgTimeToCompleteHours,
+        avgCompletedPerDay,
+        estimatedVsActualRatio,
+        trashCount,
+        activeLongTermTasks,
+        currentStreak,
       },
     });
   } catch (error) {
@@ -62,7 +192,11 @@ export const getOverview = async (_req: Request, res: Response, next: NextFuncti
 };
 
 // GET /api/stats/weekly — Daily created vs completed for last 7 days
-export const getWeeklyActivity = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getWeeklyActivity = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     const days = 7;
     const now = new Date();
@@ -72,7 +206,7 @@ export const getWeeklyActivity = async (_req: Request, res: Response, next: Next
 
     const [createdByDay, completedByDay] = await Promise.all([
       Task.aggregate([
-        { $match: { createdAt: { $gte: startDate } } },
+        { $match: { createdAt: { $gte: startDate }, isDeleted: false } },
         {
           $group: {
             _id: {
@@ -84,7 +218,12 @@ export const getWeeklyActivity = async (_req: Request, res: Response, next: Next
         { $sort: { _id: 1 } },
       ]),
       Task.aggregate([
-        { $match: { completedAt: { $gte: startDate, $ne: null } } },
+        {
+          $match: {
+            completedAt: { $gte: startDate, $ne: null },
+            isDeleted: false,
+          },
+        },
         {
           $group: {
             _id: {
@@ -98,8 +237,15 @@ export const getWeeklyActivity = async (_req: Request, res: Response, next: Next
     ]);
 
     // Build a complete array for all 7 days
-    const createdMap = new Map(createdByDay.map((d: { _id: string; count: number }) => [d._id, d.count]));
-    const completedMap = new Map(completedByDay.map((d: { _id: string; count: number }) => [d._id, d.count]));
+    const createdMap = new Map(
+      createdByDay.map((d: { _id: string; count: number }) => [d._id, d.count]),
+    );
+    const completedMap = new Map(
+      completedByDay.map((d: { _id: string; count: number }) => [
+        d._id,
+        d.count,
+      ]),
+    );
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weeklyData = [];
@@ -125,7 +271,11 @@ export const getWeeklyActivity = async (_req: Request, res: Response, next: Next
 };
 
 // GET /api/stats/monthly — Weekly completions trend for last 4 weeks
-export const getMonthlyTrend = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getMonthlyTrend = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     const weeks = 4;
     const now = new Date();
@@ -144,9 +294,11 @@ export const getMonthlyTrend = async (_req: Request, res: Response, next: NextFu
       const [created, completed] = await Promise.all([
         Task.countDocuments({
           createdAt: { $gte: weekStart, $lt: weekEnd },
+          isDeleted: false,
         }),
         Task.countDocuments({
           completedAt: { $gte: weekStart, $lt: weekEnd, $ne: null },
+          isDeleted: false,
         }),
       ]);
 
@@ -165,9 +317,14 @@ export const getMonthlyTrend = async (_req: Request, res: Response, next: NextFu
 };
 
 // GET /api/stats/priority — Tasks by priority breakdown
-export const getPriorityBreakdown = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getPriorityBreakdown = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     const breakdown = await Task.aggregate([
+      { $match: { isDeleted: false } },
       {
         $group: {
           _id: '$priority',
@@ -202,9 +359,14 @@ export const getPriorityBreakdown = async (_req: Request, res: Response, next: N
 };
 
 // GET /api/stats/tags — Tags breakdown with counts
-export const getTagsBreakdown = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getTagsBreakdown = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   try {
     const breakdown = await Task.aggregate([
+      { $match: { isDeleted: false } },
       { $unwind: '$tags' },
       {
         $group: {
@@ -221,12 +383,114 @@ export const getTagsBreakdown = async (_req: Request, res: Response, next: NextF
       { $sort: { total: -1 } },
     ]);
 
-    const data = breakdown.map((b: { _id: string; total: number; completed: number; pending: number }) => ({
-      tag: b._id,
-      total: b.total,
-      completed: b.completed,
-      pending: b.pending,
-    }));
+    const data = breakdown.map(
+      (b: {
+        _id: string;
+        total: number;
+        completed: number;
+        pending: number;
+      }) => ({
+        tag: b._id,
+        total: b.total,
+        completed: b.completed,
+        pending: b.pending,
+      }),
+    );
+
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/stats/day-of-week — Productivity by day of week
+export const getDayOfWeekStats = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const breakdown = await Task.aggregate([
+      {
+        $match: {
+          status: 'completed',
+          completedAt: { $ne: null },
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: { $dayOfWeek: '$completedAt' },
+          completed: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    // MongoDB $dayOfWeek returns 1 (Sunday) to 7 (Saturday)
+    const data = dayNames.map((day, index) => {
+      const found = breakdown.find((b: { _id: number }) => b._id === index + 1);
+      return {
+        day,
+        completed: found?.completed || 0,
+      };
+    });
+
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/stats/velocity — Time to complete by priority
+export const getVelocityStats = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const breakdown = await Task.aggregate([
+      {
+        $match: {
+          status: 'completed',
+          completedAt: { $ne: null },
+          isDeleted: false,
+        },
+      },
+      {
+        $project: {
+          priority: 1,
+          timeTakenMs: { $subtract: ['$completedAt', '$createdAt'] },
+        },
+      },
+      {
+        $group: {
+          _id: '$priority',
+          fastest: { $min: '$timeTakenMs' },
+          longest: { $max: '$timeTakenMs' },
+          avg: { $avg: '$timeTakenMs' },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    const priorities = ['low', 'medium', 'high'];
+    const data = priorities.map((p) => {
+      const found = breakdown.find((b: { _id: string }) => b._id === p);
+      return {
+        priority: p,
+        fastestHours: found?.fastest
+          ? Math.round((found.fastest / 3600000) * 10) / 10
+          : null,
+        longestHours: found?.longest
+          ? Math.round((found.longest / 3600000) * 10) / 10
+          : null,
+        avgHours: found?.avg
+          ? Math.round((found.avg / 3600000) * 10) / 10
+          : null,
+      };
+    });
 
     res.json({ success: true, data });
   } catch (error) {

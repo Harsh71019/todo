@@ -92,7 +92,7 @@ Todo/
 ## 🛠️ How It Works (Architecture)
 
 1. **The Data Flow**: When a user interacts with the UI (e.g., adds a task), the custom `useTasks` hook calls the `taskApi` service. 
-2. **Proxy**: Vite's dev server (`vite.config.ts`) proxies all `/api/*` requests to the Express backend running on port 5000, avoiding CORS issues during development.
+2. **Proxy**: Vite's dev server (`vite.config.ts`) proxies all `/api/*` requests to the Express backend running on port 5001, avoiding CORS issues during development.
 3. **Backend Processing**: Express routes the request to the appropriate controller. 
 4. **Validation**: `Zod` validates the incoming payload before it reaches the database.
 5. **Database**: `Mongoose` interacts with MongoDB Atlas to store or retrieve the data. Timestamps (`createdAt`, `completedAt`) are automatically managed, which powers the rich analytics dashboard.
@@ -109,7 +109,7 @@ Todo/
 ### 2. Environment Setup
 Navigate to the `server/` directory and ensure your `.env` file is properly configured:
 ```env
-PORT=5000
+PORT=5001
 MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-url>/todo-app?retryWrites=true&w=majority
 ```
 *(Note: If your password contains special characters like `@`, be sure to URL-encode them, e.g., `%40`)*

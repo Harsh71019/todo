@@ -9,6 +9,8 @@ import type {
   MonthlyTrend,
   PriorityBreakdown,
   TagBreakdown,
+  DayOfWeekStats,
+  VelocityStats,
 } from '../types/task';
 
 const api = axios.create({
@@ -24,6 +26,7 @@ export const getTasks = async (params?: {
   sort?: string;
   search?: string;
   tag?: string;
+  view?: string;
 }): Promise<Task[]> => {
   const { data } = await api.get<ApiResponse<Task[]>>('/tasks', { params });
   return data.data;
@@ -41,6 +44,10 @@ export const updateTask = async (id: string, payload: UpdateTaskPayload): Promis
 
 export const deleteTask = async (id: string): Promise<void> => {
   await api.delete(`/tasks/${id}`);
+};
+
+export const permanentlyDeleteTask = async (id: string): Promise<void> => {
+  await api.delete(`/tasks/${id}/permanent`);
 };
 
 // ─── Stats ───────────────────────────────────────────────
@@ -66,6 +73,16 @@ export const getPriorityBreakdown = async (): Promise<PriorityBreakdown[]> => {
 };
 
 export const getTagsBreakdown = async (): Promise<TagBreakdown[]> => {
-  const { data } = await api.get<ApiResponse<TagBreakdown[]>>('/stats/tags');
-  return data.data;
+  const response = await api.get('/stats/tags');
+  return response.data.data;
+};
+
+export const getDayOfWeekStats = async (): Promise<DayOfWeekStats[]> => {
+  const response = await api.get('/stats/day-of-week');
+  return response.data.data;
+};
+
+export const getVelocityStats = async (): Promise<VelocityStats[]> => {
+  const response = await api.get('/stats/velocity');
+  return response.data.data;
 };
