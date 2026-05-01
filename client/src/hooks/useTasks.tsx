@@ -42,30 +42,15 @@ export const useTasks = (
   const [activeTag, setActiveTag] = useState<string>('all');
   const [activePriority, setActivePriority] = useState<string>('all');
   const [allTags, setAllTags] = useState<string[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const fetchTasks = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const params: Record<string, string> = { sort: sortBy, view };
-      if (filter !== 'all') params.status = filter;
-      if (activeTag !== 'all') params.tag = activeTag;
-      if (activePriority !== 'all') params.priority = activePriority;
-      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
-      const data = await taskApi.getTasks(params);
-      setTasks(data);
+  // Stable ref for the refresh trigger so CRUD actions can call it
+  const refresh = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+    return Promise.resolve();
+  }, []);
 
-      // Collect unique tags from all tasks for filter list
-      const tags = new Set<string>();
-      data.forEach((t) => t.tags?.forEach((tag) => tags.add(tag)));
-      setAllTags(Array.from(tags).sort());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch tasks');
-    } finally {
-      setLoading(false);
-    }
-  }, [filter, sortBy, debouncedSearch, activeTag, activePriority, view]);
-
+  // Debounce the search query
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchQuery);
@@ -73,9 +58,51 @@ export const useTasks = (
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
+  // Primary data fetch — inline async function avoids the setState-in-effect lint warning
   useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const params: Record<string, string> = { sort: sortBy, view };
+        if (filter !== 'all') params.status = filter;
+        if (activeTag !== 'all') params.tag = activeTag;
+        if (activePriority !== 'all') params.priority = activePriority;
+        if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+        const data = await taskApi.getTasks(params);
+
+        if (cancelled) return; // component unmounted — skip state updates
+
+        setTasks(data);
+        const tagSet = new Set<string>();
+        data.forEach((t) => t.tags?.forEach((tag) => tagSet.add(tag)));
+        setAllTags(Array.from(tagSet).sort());
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : 'Failed to fetch tasks',
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    filter,
+    sortBy,
+    debouncedSearch,
+    activeTag,
+    activePriority,
+    view,
+    refreshKey,
+  ]);
 
   const addTask = async (payload: CreateTaskPayload) => {
     try {
@@ -166,10 +193,10 @@ export const useTasks = (
 
   const restoreTask = async (id: string) => {
     await taskApi.updateTask(id, { isDeleted: false });
-    setTasks((prev) => prev.filter((t) => t._id !== id)); // Remove from trash view
-    // Since restore can happen from inside the trash OR from an undo,
-    // we don't automatically add it back to tasks if we are in the trash view.
-    // The active view will refetch or we can just let it be.
+    // Trigger a refetch so the list correctly reflects reality in both contexts:
+    // - From Trash view: the task disappears from the trash list
+    // - From Undo toast in active view: the task reappears
+    refresh();
     toast.success('Task restored');
   };
 
@@ -215,6 +242,6 @@ export const useTasks = (
     restoreTask,
     editTask,
     toggleSubtask,
-    refresh: fetchTasks,
+    refresh,
   };
 };

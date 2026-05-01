@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import Task from '../models/Task.js';
+import Tag from '../models/Tag.js';
 import { createTaskSchema, updateTaskSchema } from '../types/task.js';
 import { ZodError } from 'zod';
 
@@ -51,8 +52,16 @@ export const createTask = async (req: Request, res: Response, next: NextFunction
   try {
     const validated = createTaskSchema.parse(req.body);
 
+    // Inject default tags (deduplicated, respect max-5 limit)
+    const defaultTags = await Tag.find({ isDefault: true }).select('name').lean();
+    const defaultTagNames = defaultTags.map((t) => t.name);
+    const mergedTags = Array.from(
+      new Set([...(validated.tags || []), ...defaultTagNames]),
+    ).slice(0, 5);
+
     const task = await Task.create({
       ...validated,
+      tags: mergedTags,
       dueDate: validated.dueDate ? new Date(validated.dueDate) : undefined,
     });
 

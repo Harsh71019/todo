@@ -1,15 +1,19 @@
-import { useState, useEffect, type FormEvent, type KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent, type KeyboardEvent } from 'react';
 import type {
   CreateTaskPayload,
   UpdateTaskPayload,
   TaskPriority,
   Task,
 } from '../types/task';
+import type { Tag } from '../types/tag';
 
 interface TaskFormProps {
   onSubmit: (payload: CreateTaskPayload | UpdateTaskPayload) => Promise<void>;
   initialData?: Task;
   onCancel?: () => void;
+  /** Full Tag objects from the DB — used for the dropdown + colour dots */
+  availableTags?: Tag[];
+  /** @deprecated pass availableTags instead */
   suggestedTags?: string[];
 }
 
@@ -17,8 +21,10 @@ const TaskForm = ({
   onSubmit,
   initialData,
   onCancel,
-  suggestedTags,
+  availableTags = [],
 }: TaskFormProps) => {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const loadDraft = () => {
     if (initialData) return null;
     try {
@@ -43,8 +49,14 @@ const TaskForm = ({
       ? new Date(initialData.dueDate).toISOString().split('T')[0]
       : draft?.dueDate || '',
   );
-  const [tags, setTags] = useState<string[]>(initialData?.tags || draft?.tags || []);
-  const [tagInput, setTagInput] = useState('');
+  // For new tasks: pre-seed with default tags (only on first mount, not from draft)
+  const getInitialTags = (): string[] => {
+    if (initialData) return initialData.tags ?? [];
+    if (draft?.tags?.length) return draft.tags;
+    // Pre-select all default tags
+    return availableTags.filter((t) => t.isDefault).map((t) => t.name);
+  };
+  const [tags, setTags] = useState<string[]>(getInitialTags);
   const [estimatedMinutes, setEstimatedMinutes] = useState(
     initialData?.estimatedMinutes ? String(initialData.estimatedMinutes) : draft?.estimatedMinutes || '',
   );
@@ -70,27 +82,30 @@ const TaskForm = ({
     }
   }, [title, description, priority, dueDate, tags, estimatedMinutes, subtasks, isLongTerm, initialData]);
 
-  const addTag = () => {
-    const tag = tagInput.trim().toLowerCase();
-    if (tag && !tags.includes(tag) && tags.length < 5) {
-      setTags([...tags, tag]);
-      setTagInput('');
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const toggleTag = (tagName: string) => {
+    if (tags.includes(tagName)) {
+      setTags(tags.filter((t) => t !== tagName));
+    } else if (tags.length < 5) {
+      setTags([...tags, tagName]);
     }
   };
 
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter((t) => t !== tagToRemove));
+  const removeTag = (tagName: string) => {
+    setTags(tags.filter((t) => t !== tagName));
   };
 
-  const handleTagKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      addTag();
-    }
-    if (e.key === 'Backspace' && !tagInput && tags.length > 0) {
-      setTags(tags.slice(0, -1));
-    }
-  };
+
 
   const addSubtask = () => {
     const stTitle = subtaskInput.trim();
@@ -137,8 +152,8 @@ const TaskForm = ({
         setDescription('');
         setPriority('medium');
         setDueDate('');
-        setTags([]);
-        setTagInput('');
+        // Reset to default tags again
+        setTags(availableTags.filter((t) => t.isDefault).map((t) => t.name));
         setEstimatedMinutes('');
         setSubtasks([]);
         setSubtaskInput('');
@@ -344,84 +359,136 @@ const TaskForm = ({
           </div>
 
           <div className='flex flex-col gap-4'>
-            {/* Tags */}
-            <div className='relative z-10'>
+            {/* Tags — multi-select dropdown */}
+            <div className='relative z-10' ref={dropdownRef}>
               <label className='block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2'>
                 Tags
-              </label>
-              <div className='flex flex-wrap gap-1.5 items-center bg-slate-50 border border-slate-200 rounded-lg p-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition-colors'>
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className='flex items-center gap-1 bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md text-xs font-medium border border-indigo-100'
-                  >
-                    {tag}
-                    <button
-                      type='button'
-                      className='text-indigo-400 hover:text-indigo-700 transition-colors'
-                      onClick={() => removeTag(tag)}
-                    >
-                      <svg
-                        width='12'
-                        height='12'
-                        viewBox='0 0 24 24'
-                        fill='none'
-                        stroke='currentColor'
-                        strokeWidth='2'
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                      >
-                        <line x1='18' y1='6' x2='6' y2='18'></line>
-                        <line x1='6' y1='6' x2='18' y2='18'></line>
-                      </svg>
-                    </button>
+                {tags.length > 0 && (
+                  <span className='ml-2 normal-case font-normal text-slate-400'>
+                    {tags.length}/5
                   </span>
-                ))}
-                <input
-                  type='text'
-                  className='flex-1 min-w-[100px] bg-transparent border-none outline-none text-slate-800 text-sm placeholder-slate-400'
-                  placeholder={
-                    tags.length >= 5 ? 'Max 5 tags' : 'Add tags (Enter)...'
-                  }
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={handleTagKeyDown}
-                  disabled={tags.length >= 5}
-                />
+                )}
+              </label>
+
+              {/* Selected tag pills + trigger */}
+              <div
+                role='button'
+                tabIndex={0}
+                aria-haspopup='listbox'
+                aria-expanded={dropdownOpen}
+                onClick={() => setDropdownOpen((o) => !o)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDropdownOpen((o) => !o); } }}
+                className={`flex flex-wrap gap-1.5 items-center min-h-[38px] bg-slate-50 border rounded-lg p-2 cursor-pointer transition-colors select-none ${
+                  dropdownOpen
+                    ? 'border-blue-400 ring-2 ring-blue-50'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                {tags.length === 0 && (
+                  <span className='text-sm text-slate-400 flex-1'>Select tags…</span>
+                )}
+                {tags.map((tagName) => {
+                  const tagObj = availableTags.find((t) => t.name === tagName);
+                  return (
+                    <span
+                      key={tagName}
+                      className='flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border'
+                      style={{
+                        background: tagObj ? `${tagObj.color}15` : '#eef2ff',
+                        borderColor: tagObj ? `${tagObj.color}40` : '#c7d2fe',
+                        color: tagObj?.color ?? '#4f46e5',
+                      }}
+                    >
+                      <span
+                        className='w-1.5 h-1.5 rounded-full shrink-0'
+                        style={{ background: tagObj?.color ?? '#6366f1' }}
+                      />
+                      {tagName}
+                      <button
+                        type='button'
+                        className='opacity-60 hover:opacity-100 transition-opacity'
+                        onClick={(e) => { e.stopPropagation(); removeTag(tagName); }}
+                        tabIndex={-1}
+                      >
+                        <svg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='3' strokeLinecap='round' strokeLinejoin='round'>
+                          <line x1='18' y1='6' x2='6' y2='18' /><line x1='6' y1='6' x2='18' y2='18' />
+                        </svg>
+                      </button>
+                    </span>
+                  );
+                })}
+                <svg
+                  className={`ml-auto shrink-0 text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
+                  width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'
+                >
+                  <polyline points='6 9 12 15 18 9' />
+                </svg>
               </div>
 
-              {/* Autocomplete Dropdown */}
-              {tagInput &&
-                suggestedTags &&
-                suggestedTags.filter(
-                  (t) =>
-                    t.toLowerCase().includes(tagInput.toLowerCase()) &&
-                    !tags.includes(t),
-                ).length > 0 && (
-                  <div className='absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg py-1 max-h-40 overflow-y-auto'>
-                    {suggestedTags
-                      .filter(
-                        (t) =>
-                          t.toLowerCase().includes(tagInput.toLowerCase()) &&
-                          !tags.includes(t),
-                      )
-                      .map((tag) => (
-                        <button
-                          key={tag}
-                          type='button'
-                          className='w-full text-left px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors'
-                          onClick={() => {
-                            if (tags.length < 5) {
-                              setTags([...tags, tag]);
-                              setTagInput('');
-                            }
-                          }}
-                        >
-                          {tag}
-                        </button>
-                      ))}
-                  </div>
-                )}
+              {/* Dropdown panel */}
+              {dropdownOpen && (
+                <div
+                  role='listbox'
+                  aria-multiselectable='true'
+                  className='absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-20'
+                >
+                  {availableTags.length === 0 ? (
+                    <div className='px-3 py-3 text-xs text-slate-400 text-center'>
+                      No tags yet — create one in{' '}
+                      <a href='/tags' className='text-indigo-500 hover:underline'>Tags page</a>
+                    </div>
+                  ) : (
+                    <ul className='py-1 max-h-48 overflow-y-auto'>
+                      {availableTags.map((tag) => {
+                        const selected = tags.includes(tag.name);
+                        const disabled = !selected && tags.length >= 5;
+                        return (
+                          <li
+                            key={tag._id}
+                            role='option'
+                            aria-selected={selected}
+                            onClick={() => !disabled && toggleTag(tag.name)}
+                            className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${
+                              disabled
+                                ? 'opacity-40 cursor-not-allowed'
+                                : selected
+                                  ? 'bg-indigo-50/60'
+                                  : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            {/* Checkbox */}
+                            <span
+                              className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                selected ? 'border-transparent' : 'border-slate-300'
+                              }`}
+                              style={selected ? { background: tag.color, borderColor: tag.color } : {}}
+                            >
+                              {selected && (
+                                <svg width='9' height='9' viewBox='0 0 12 12' fill='none' stroke='white' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                                  <path d='M2 6l3 3 5-5' />
+                                </svg>
+                              )}
+                            </span>
+                            {/* Color dot */}
+                            <span className='w-2 h-2 rounded-full shrink-0' style={{ background: tag.color }} />
+                            {/* Name */}
+                            <span className='text-sm text-slate-700 flex-1'>{tag.name}</span>
+                            {/* Default badge */}
+                            {tag.isDefault && (
+                              <span className='text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-500'>default</span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                  {tags.length >= 5 && (
+                    <div className='px-3 py-1.5 text-xs text-amber-600 bg-amber-50 border-t border-amber-100'>
+                      Maximum 5 tags reached
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Estimates & Due Date */}

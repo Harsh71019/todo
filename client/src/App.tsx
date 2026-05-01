@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import TasksPage from './pages/TasksPage';
 import DashboardPage from './pages/DashboardPage';
+import TagsPage from './pages/TagsPage';
 import ArchivePage from './pages/ArchivePage';
 import TrashPage from './pages/TrashPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -11,7 +12,8 @@ import { Toaster } from 'react-hot-toast';
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    return localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    // Only go dark if the user has EXPLICITLY chosen it before — light is the default.
+    return localStorage.getItem('theme') === 'dark';
   });
 
   useEffect(() => {
@@ -67,6 +69,7 @@ function App() {
                 <Route path="/" element={<Navigate to="/tasks" replace />} />
                 <Route path="/tasks" element={<TasksPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/tags" element={<TagsPage />} />
                 <Route path="/archive" element={<ArchivePage />} />
                 <Route path="/trash" element={<TrashPage />} />
               </Routes>

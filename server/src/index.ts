@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import connectDB from './config/db.js';
 import taskRoutes from './routes/taskRoutes.js';
 import statsRoutes from './routes/statsRoutes.js';
+import tagRoutes from './routes/tagRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -48,6 +49,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/tasks', taskRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/tags', tagRoutes);
 
 // Error handling
 app.use(notFound);

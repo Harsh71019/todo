@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useTasks } from '../hooks/useTasks';
+import { useTags } from '../hooks/useTags';
 import TaskForm from '../components/TaskForm';
 import TaskList from '../components/TaskList';
 import FocusModal from '../components/FocusModal';
-import type { Task } from '../types/task';
+import type { Task, CreateTaskPayload } from '../types/task';
 
 const TasksPage = () => {
   const {
@@ -28,6 +29,8 @@ const TasksPage = () => {
     toggleSubtask,
     editTask,
   } = useTasks();
+
+  const { tags: availableTags } = useTags();
 
   const [focusTask, setFocusTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -131,7 +134,10 @@ const TasksPage = () => {
         </div>
       )}
 
-      <TaskForm onSubmit={(p) => addTask(p as any)} suggestedTags={allTags} />
+      <TaskForm
+        onSubmit={(p) => addTask(p as CreateTaskPayload)}
+        availableTags={availableTags}
+      />
 
       <div className='flex flex-col md:flex-row gap-3 mb-6 bg-white p-2 rounded-xl border border-slate-200 shadow-sm'>
         <div className='flex-1 flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 transition-colors'>
@@ -303,7 +309,7 @@ const TasksPage = () => {
                   setEditingTask(null);
                 }}
                 onCancel={() => setEditingTask(null)}
-                suggestedTags={allTags}
+                availableTags={availableTags}
               />
             </div>
           </div>
