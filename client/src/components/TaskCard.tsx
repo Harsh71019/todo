@@ -63,9 +63,9 @@ const TaskCard = ({ task, onToggle, onDelete, onEdit, onDuplicate, onToggleSubta
 
   return (
     <div className={`group flex flex-col gap-3 sm:gap-4 border rounded-xl p-4 transition-all duration-200 hover:shadow-md ${
-      isDeleted ? 'bg-red-50/50 border-red-100 opacity-80' : 
-      isCompleted ? 'opacity-60 bg-slate-50 border-slate-200' : 'bg-white border-slate-200 hover:border-blue-200'
-    } ${isOverdue && !isDeleted ? 'border-l-4 border-l-red-500' : ''}`}>
+      isDeleted ? 'bg-red-50/50 border-red-100 opacity-80 dark:bg-red-900/10 dark:border-red-900/30' : 
+      isCompleted ? 'opacity-60 bg-slate-50 border-slate-200 dark:bg-[#0a0a0a] dark:border-neutral-800' : 'bg-white border-slate-200 hover:border-blue-200 dark:bg-black dark:border-neutral-800 dark:hover:border-blue-500'
+    } ${isOverdue && !isDeleted ? 'border-l-4 border-l-red-500 dark:border-l-red-600' : ''}`}>
       
       <div className="flex items-start gap-3 sm:gap-4">
         {!isDeleted ? (
@@ -73,7 +73,7 @@ const TaskCard = ({ task, onToggle, onDelete, onEdit, onDuplicate, onToggleSubta
             className={`shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded border-2 flex items-center justify-center mt-0.5 transition-colors ${
               isCompleted 
                 ? 'bg-emerald-500 border-emerald-500 text-white' 
-                : 'border-slate-300 bg-transparent hover:border-blue-500'
+                : 'border-slate-300 bg-transparent hover:border-blue-500 dark:border-neutral-600 dark:hover:border-blue-500'
             }`}
             onClick={() => onToggle(task._id)}
             aria-label={isCompleted ? 'Mark as pending' : 'Mark as completed'}
@@ -85,35 +85,35 @@ const TaskCard = ({ task, onToggle, onDelete, onEdit, onDuplicate, onToggleSubta
             )}
           </button>
         ) : (
-          <div className="shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded border-2 border-red-300 bg-red-100 flex items-center justify-center mt-0.5">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-red-500" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <div className="shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded border-2 border-red-300 bg-red-100 dark:border-red-900/50 dark:bg-red-900/20 flex items-center justify-center mt-0.5">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-red-500 dark:text-red-400" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </div>
         )}
 
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className={`text-[15px] sm:text-base font-medium break-words ${
-              isDeleted ? 'line-through text-red-800' : 
-              isCompleted ? 'line-through text-slate-500' : 'text-slate-800'
+              isDeleted ? 'line-through text-red-800 dark:text-red-400' : 
+              isCompleted ? 'line-through text-slate-500 dark:text-slate-400' : 'text-slate-800 dark:text-slate-100'
             }`}>
               {task.title}
             </span>
             <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-              task.priority === 'low' ? 'bg-emerald-100 text-emerald-700' :
-              task.priority === 'medium' ? 'bg-amber-100 text-amber-700' :
-              'bg-red-100 text-red-700'
+              task.priority === 'low' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+              task.priority === 'medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+              'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
             }`}>
               {task.priority}
             </span>
             {task.isLongTerm && (
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                 24h+
               </span>
             )}
           </div>
 
           {task.description && (
-            <div className={`text-sm mb-2.5 break-words line-clamp-2 [&>p]:mb-1 [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4 [&>a]:text-blue-600 [&>a]:underline [&>pre]:bg-slate-100 [&>pre]:p-1 [&>pre]:rounded [&>code]:bg-slate-100 [&>code]:px-1 [&>code]:rounded ${isDeleted ? 'text-red-700/70' : 'text-slate-600'}`}>
+            <div className={`text-sm mb-2.5 break-words line-clamp-2 [&>p]:mb-1 [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4 [&>a]:text-blue-600 dark:[&>a]:text-blue-400 [&>a]:underline [&>pre]:bg-slate-100 dark:[&>pre]:bg-neutral-800 [&>pre]:p-1 [&>pre]:rounded [&>code]:bg-slate-100 dark:[&>code]:bg-neutral-800 [&>code]:px-1 [&>code]:rounded ${isDeleted ? 'text-red-700/70 dark:text-red-400/70' : 'text-slate-600 dark:text-slate-300'}`}>
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {task.description}
               </ReactMarkdown>
@@ -123,7 +123,7 @@ const TaskCard = ({ task, onToggle, onDelete, onEdit, onDuplicate, onToggleSubta
           {task.tags && task.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-2.5">
               {task.tags.map((tag) => (
-                <span key={tag} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 border border-indigo-100/50">
+                <span key={tag} className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 border border-indigo-100/50 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800/50">
                   {tag}
                 </span>
               ))}
@@ -131,7 +131,7 @@ const TaskCard = ({ task, onToggle, onDelete, onEdit, onDuplicate, onToggleSubta
           )}
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
-            <span className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+            <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="6" cy="6" r="5" />
                 <path d="M6 3v3l2 1" strokeLinecap="round" />
@@ -140,7 +140,7 @@ const TaskCard = ({ task, onToggle, onDelete, onEdit, onDuplicate, onToggleSubta
             </span>
 
             {task.dueDate && !isDeleted && (
-              <span className={`flex items-center gap-1.5 text-xs font-medium ${isOverdue ? 'text-red-600' : 'text-slate-500'}`}>
+              <span className={`flex items-center gap-1.5 text-xs font-medium ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="1.5" y="2" width="9" height="8" rx="1.5" />
                   <path d="M1.5 5h9M4 1v2M8 1v2" strokeLinecap="round" />
@@ -249,9 +249,9 @@ const TaskCard = ({ task, onToggle, onDelete, onEdit, onDuplicate, onToggleSubta
 
       {/* Subtasks Section */}
       {totalSubtasksCount > 0 && (
-        <div className="ml-8 sm:ml-10 border-t border-slate-100 pt-3">
+        <div className="ml-8 sm:ml-10 border-t border-slate-100 dark:border-neutral-800 pt-3">
           <div className="flex items-center gap-3 mb-2">
-            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className="flex-1 h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
               <div 
                 className={`h-full transition-all duration-500 ${subtaskProgress === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
                 style={{ width: `${subtaskProgress}%` }}
@@ -271,7 +271,7 @@ const TaskCard = ({ task, onToggle, onDelete, onEdit, onDuplicate, onToggleSubta
                 <div className="relative flex items-center justify-center mt-0.5">
                   <input
                     type="checkbox"
-                    className="peer appearance-none w-3.5 h-3.5 border-2 border-slate-300 rounded-sm checked:bg-blue-500 checked:border-blue-500 cursor-pointer transition-all"
+                    className="peer appearance-none w-3.5 h-3.5 border-2 border-slate-300 dark:border-neutral-600 rounded-sm checked:bg-blue-500 checked:border-blue-500 dark:checked:border-blue-500 cursor-pointer transition-all"
                     checked={st.isCompleted}
                     onChange={() => onToggleSubtask && onToggleSubtask(task._id, idx)}
                     disabled={!onToggleSubtask || isCompleted}
@@ -284,7 +284,7 @@ const TaskCard = ({ task, onToggle, onDelete, onEdit, onDuplicate, onToggleSubta
                   </svg>
                 </div>
                 <span className={`text-sm select-none transition-colors ${
-                  st.isCompleted ? 'line-through text-slate-400' : 'text-slate-600 group-hover/st:text-slate-900'
+                  st.isCompleted ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-600 dark:text-slate-300 group-hover/st:text-slate-900 dark:group-hover/st:text-slate-100'
                 }`}>
                   {st.title}
                 </span>

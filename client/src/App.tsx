@@ -28,15 +28,15 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className={`flex min-h-screen font-sans transition-colors duration-300 ${isDarkMode ? 'dark bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
+      <div className={`flex min-h-screen font-sans transition-colors duration-300 ${isDarkMode ? 'dark bg-black text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
         <Toaster position="bottom-right" toastOptions={{ 
           duration: 3000, 
-          style: isDarkMode ? { background: '#1e293b', color: '#fff', borderRadius: '12px' } : { background: '#334155', color: '#fff', borderRadius: '12px' } 
+          style: isDarkMode ? { background: '#000000', border: '1px solid #262626', color: '#fff', borderRadius: '12px' } : { background: '#334155', color: '#fff', borderRadius: '12px' } 
         }} />
         {/* Mobile Sidebar Overlay */}
         {isSidebarOpen && (
           <div 
-            className="fixed inset-0 bg-slate-800/20 backdrop-blur-sm z-40 lg:hidden"
+            className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-40 lg:hidden"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
@@ -49,7 +49,7 @@ function App() {
         />
         
         <main className="flex-1 w-full lg:ml-64 flex flex-col min-h-screen transition-all duration-300">
-          <header className="lg:hidden bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center sticky top-0 z-30 shadow-sm">
+          <header className="lg:hidden bg-white dark:bg-black border-b border-slate-200 dark:border-neutral-800 px-4 py-3 flex items-center sticky top-0 z-30 shadow-sm">
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 -ml-2 mr-2 text-slate-500 hover:text-slate-700 rounded-md hover:bg-slate-100 transition-colors"

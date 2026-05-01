@@ -79,20 +79,20 @@ const DashboardPage = () => {
     return (
       <div className='animate-in fade-in slide-in-from-bottom-4 duration-500'>
         <header className='mb-8'>
-          <div className='h-8 w-48 bg-slate-200 rounded animate-pulse mb-2' />
-          <div className='h-4 w-64 bg-slate-200 rounded animate-pulse' />
+          <div className='h-8 w-48 bg-slate-200 dark:bg-neutral-800 rounded animate-pulse mb-2' />
+          <div className='h-4 w-64 bg-slate-200 dark:bg-neutral-800 rounded animate-pulse' />
         </header>
         <div className='grid grid-cols-2 md:grid-cols-4 gap-4 mb-8'>
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className='h-28 bg-white border border-slate-200 rounded-2xl animate-pulse'
+              className='h-28 bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl animate-pulse'
             />
           ))}
         </div>
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-          <div className='h-80 bg-white border border-slate-200 rounded-2xl animate-pulse' />
-          <div className='h-80 bg-white border border-slate-200 rounded-2xl animate-pulse' />
+          <div className='h-80 bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl animate-pulse' />
+          <div className='h-80 bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl animate-pulse' />
         </div>
       </div>
     );
@@ -117,10 +117,10 @@ const DashboardPage = () => {
             <line x1='12' y1='16' x2='12.01' y2='16'></line>
           </svg>
         </div>
-        <h2 className='text-xl font-bold text-slate-800 mb-2'>
+        <h2 className='text-xl font-bold text-slate-800 dark:text-slate-100 mb-2'>
           Error Loading Dashboard
         </h2>
-        <p className='text-slate-500'>{error}</p>
+        <p className='text-slate-500 dark:text-slate-400'>{error}</p>
       </div>
     );
   }
@@ -134,10 +134,10 @@ const DashboardPage = () => {
   return (
     <div className='animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10'>
       <header className='mb-6 lg:mb-8'>
-        <h2 className='text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight'>
+        <h2 className='text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight'>
           Analytics Dashboard
         </h2>
-        <p className='text-sm sm:text-base text-slate-500 mt-1'>
+        <p className='text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1'>
           Deep insights into your productivity habits and velocity.
         </p>
       </header>
@@ -314,11 +314,11 @@ const DashboardPage = () => {
 
       <div className='grid grid-cols-1 xl:grid-cols-3 lg:grid-cols-2 gap-6 mb-6'>
         {/* Radar Chart: Productivity by Day of Week */}
-        <div className='bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm'>
-          <h3 className='text-base font-bold text-slate-800 mb-1'>
+        <div className='bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6 shadow-sm'>
+          <h3 className='text-base font-bold text-slate-800 dark:text-slate-100 mb-1'>
             Productivity Rhythm
           </h3>
-          <p className='text-xs text-slate-500 mb-6'>
+          <p className='text-xs text-slate-500 dark:text-slate-400 mb-6'>
             Which days are you most productive?
           </p>
           <div className='h-64 w-full'>
@@ -361,11 +361,11 @@ const DashboardPage = () => {
         </div>
 
         {/* Monthly Area Chart */}
-        <div className='bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm'>
-          <h3 className='text-base font-bold text-slate-800 mb-1'>
+        <div className='bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6 shadow-sm'>
+          <h3 className='text-base font-bold text-slate-800 dark:text-slate-100 mb-1'>
             4-Week Velocity Trend
           </h3>
-          <p className='text-xs text-slate-500 mb-6'>
+          <p className='text-xs text-slate-500 dark:text-slate-400 mb-6'>
             Your task momentum over the last month
           </p>
           <div className='h-64 w-full'>
@@ -448,11 +448,11 @@ const DashboardPage = () => {
         </div>
 
         {/* Weekly Bar Chart */}
-        <div className='bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm'>
-          <h3 className='text-base font-bold text-slate-800 mb-1'>
+        <div className='bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6 shadow-sm'>
+          <h3 className='text-base font-bold text-slate-800 dark:text-slate-100 mb-1'>
             Weekly Activity
           </h3>
-          <p className='text-xs text-slate-500 mb-6'>
+          <p className='text-xs text-slate-500 dark:text-slate-400 mb-6'>
             Tasks created vs completed over the last 7 days
           </p>
           <div className='h-64 w-full'>
@@ -506,11 +506,11 @@ const DashboardPage = () => {
 
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
         {/* Time-to-Completion Breakdown (Velocity Stats) */}
-        <div className='lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm'>
-          <h3 className='text-base font-bold text-slate-800 mb-1'>
+        <div className='lg:col-span-2 bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6 shadow-sm'>
+          <h3 className='text-base font-bold text-slate-800 dark:text-slate-100 mb-1'>
             Velocity by Priority
           </h3>
-          <p className='text-xs text-slate-500 mb-6'>
+          <p className='text-xs text-slate-500 dark:text-slate-400 mb-6'>
             Average hours taken to complete tasks
           </p>
 
@@ -520,10 +520,10 @@ const DashboardPage = () => {
                 key={v.priority}
                 className={`p-4 rounded-xl border ${
                   v.priority === 'high'
-                    ? 'bg-red-50/50 border-red-100'
+                    ? 'bg-red-50/50 dark:bg-red-900/20 border-red-100 dark:border-red-900/50'
                     : v.priority === 'medium'
-                      ? 'bg-amber-50/50 border-amber-100'
-                      : 'bg-emerald-50/50 border-emerald-100'
+                      ? 'bg-amber-50/50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/50'
+                      : 'bg-emerald-50/50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/50'
                 }`}
               >
                 <div className='flex items-center gap-2 mb-3'>
@@ -536,26 +536,26 @@ const DashboardPage = () => {
                           : 'bg-emerald-500'
                     }`}
                   />
-                  <span className='text-xs font-bold uppercase tracking-wider text-slate-600'>
+                  <span className='text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400'>
                     {v.priority}
                   </span>
                 </div>
                 <div className='space-y-2'>
                   <div className='flex justify-between items-center text-sm'>
-                    <span className='text-slate-500'>Average:</span>
-                    <span className='font-semibold text-slate-800'>
+                    <span className='text-slate-500 dark:text-slate-400'>Average:</span>
+                    <span className='font-semibold text-slate-800 dark:text-slate-100'>
                       {v.avgHours !== null ? `${v.avgHours}h` : '-'}
                     </span>
                   </div>
                   <div className='flex justify-between items-center text-sm'>
-                    <span className='text-slate-500'>Fastest:</span>
-                    <span className='font-semibold text-slate-800'>
+                    <span className='text-slate-500 dark:text-slate-400'>Fastest:</span>
+                    <span className='font-semibold text-slate-800 dark:text-slate-100'>
                       {v.fastestHours !== null ? `${v.fastestHours}h` : '-'}
                     </span>
                   </div>
                   <div className='flex justify-between items-center text-sm'>
-                    <span className='text-slate-500'>Longest:</span>
-                    <span className='font-semibold text-slate-800'>
+                    <span className='text-slate-500 dark:text-slate-400'>Longest:</span>
+                    <span className='font-semibold text-slate-800 dark:text-slate-100'>
                       {v.longestHours !== null ? `${v.longestHours}h` : '-'}
                     </span>
                   </div>
@@ -566,11 +566,11 @@ const DashboardPage = () => {
         </div>
 
         {/* Priority Pie Chart */}
-        <div className='bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col'>
-          <h3 className='text-base font-bold text-slate-800 mb-1'>
+        <div className='bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col'>
+          <h3 className='text-base font-bold text-slate-800 dark:text-slate-100 mb-1'>
             Priority Distribution
           </h3>
-          <p className='text-xs text-slate-500 mb-6'>
+          <p className='text-xs text-slate-500 dark:text-slate-400 mb-6'>
             All tasks by priority level
           </p>
           <div className='flex-1 min-h-[200px] w-full flex items-center justify-center'>
@@ -618,7 +618,7 @@ const DashboardPage = () => {
                     height={36}
                     iconType='circle'
                     formatter={(value) => (
-                      <span className='capitalize text-slate-600 text-xs font-medium'>
+                      <span className='capitalize text-slate-600 dark:text-slate-400 text-xs font-medium'>
                         {value}
                       </span>
                     )}

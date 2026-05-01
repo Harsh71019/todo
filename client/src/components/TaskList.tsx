@@ -19,12 +19,12 @@ const TaskListSkeleton = () => (
     {[1, 2, 3].map((i) => (
       <div
         key={i}
-        className='flex items-start gap-4 bg-white border border-slate-200 rounded-xl p-4'
+        className='flex items-start gap-4 bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-xl p-4'
       >
-        <div className='w-6 h-6 rounded bg-slate-200 animate-pulse mt-0.5' />
+        <div className='w-6 h-6 rounded bg-slate-200 dark:bg-neutral-800 animate-pulse mt-0.5' />
         <div className='flex-1 flex flex-col gap-2'>
-          <div className='h-4 bg-slate-200 rounded w-2/3 animate-pulse' />
-          <div className='h-3 bg-slate-200 rounded w-1/3 animate-pulse' />
+          <div className='h-4 bg-slate-200 dark:bg-neutral-800 rounded w-2/3 animate-pulse' />
+          <div className='h-3 bg-slate-200 dark:bg-neutral-800 rounded w-1/3 animate-pulse' />
         </div>
       </div>
     ))}
@@ -52,10 +52,10 @@ const TaskList = ({
       <div className='flex flex-col items-center justify-center py-20 px-4 mt-8'>
         <div className='relative w-48 h-48 mb-6'>
           {/* Background decoration */}
-          <div className='absolute inset-0 bg-blue-50 rounded-full scale-110 blur-xl opacity-70 animate-pulse' />
+          <div className='absolute inset-0 bg-blue-50 dark:bg-blue-900/10 rounded-full scale-110 blur-xl opacity-70 animate-pulse' />
 
           {/* Illustration */}
-          <div className='relative w-full h-full bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center justify-center rotate-3 transition-transform hover:rotate-0 duration-300'>
+          <div className='relative w-full h-full bg-white dark:bg-[#0a0a0a] rounded-3xl border border-slate-100 dark:border-neutral-800 shadow-sm flex flex-col items-center justify-center rotate-3 transition-transform hover:rotate-0 duration-300'>
             <svg
               width='64'
               height='64'
@@ -87,14 +87,14 @@ const TaskList = ({
               />
               <path d='M8 12l3 3 5-6' strokeWidth='2' />
             </svg>
-            <div className='mt-4 h-2 w-16 bg-slate-100 rounded-full' />
-            <div className='mt-2 h-2 w-10 bg-slate-100 rounded-full' />
+            <div className='mt-4 h-2 w-16 bg-slate-100 dark:bg-neutral-800 rounded-full' />
+            <div className='mt-2 h-2 w-10 bg-slate-100 dark:bg-neutral-800 rounded-full' />
           </div>
         </div>
-        <h3 className='text-xl font-bold text-slate-800 mb-2 tracking-tight'>
+        <h3 className='text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 tracking-tight'>
           A blank canvas awaits
         </h3>
-        <p className='text-sm text-slate-500 max-w-sm text-center leading-relaxed'>
+        <p className='text-sm text-slate-500 dark:text-slate-400 max-w-sm text-center leading-relaxed'>
           You're completely caught up! Add a new task above to start organizing
           your day, or adjust your filters if you're looking for something
           specific.
@@ -107,11 +107,11 @@ const TaskList = ({
     // If viewing trash or archive (inferred by tasks having isDeleted or all being completed), maybe don't group,
     // but doing it always is fine for consistency. We'll group them nicely.
     const groups: { label: string; tasks: Task[]; color: string }[] = [
-      { label: 'Overdue', tasks: [], color: 'text-red-600 bg-red-50' },
-      { label: 'Today', tasks: [], color: 'text-blue-600 bg-blue-50' },
-      { label: 'Tomorrow', tasks: [], color: 'text-amber-600 bg-amber-50' },
-      { label: 'Upcoming', tasks: [], color: 'text-indigo-600 bg-indigo-50' },
-      { label: 'No Date', tasks: [], color: 'text-slate-600 bg-slate-50' },
+      { label: 'Overdue', tasks: [], color: 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' },
+      { label: 'Today', tasks: [], color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' },
+      { label: 'Tomorrow', tasks: [], color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400' },
+      { label: 'Upcoming', tasks: [], color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400' },
+      { label: 'No Date', tasks: [], color: 'text-slate-600 bg-slate-50 dark:bg-neutral-900 dark:text-slate-400' },
     ];
 
     const today = new Date();
@@ -157,8 +157,8 @@ const TaskList = ({
             >
               {group.label}
             </h4>
-            <div className='h-px bg-slate-100 flex-1' />
-            <span className='text-xs font-semibold text-slate-400'>
+            <div className='h-px bg-slate-100 dark:bg-neutral-800 flex-1' />
+            <span className='text-xs font-semibold text-slate-400 dark:text-slate-500'>
               {group.tasks.length}
             </span>
           </div>

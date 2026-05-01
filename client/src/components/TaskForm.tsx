@@ -178,8 +178,8 @@ const TaskForm = ({
 
   return (
     <form
-      className={`bg-white border rounded-xl shadow-sm transition-all duration-300 mb-6 ${
-        isExpanded ? 'border-blue-400 ring-4 ring-blue-50' : 'border-slate-200'
+      className={`bg-white dark:bg-black border rounded-xl shadow-sm transition-all duration-300 mb-6 ${
+        isExpanded ? 'border-blue-400 ring-4 ring-blue-50 dark:ring-blue-900/30' : 'border-slate-200 dark:border-neutral-800'
       } ${initialData ? 'mb-0 shadow-none border-0' : ''}`}
       onSubmit={handleSubmit}
       onKeyDown={handleFormKeyDown}
@@ -201,7 +201,7 @@ const TaskForm = ({
           <input
             id='task-title-input'
             type='text'
-            className='flex-1 bg-transparent border-none outline-none text-slate-800 placeholder-slate-400 text-[15px]'
+            className='flex-1 bg-transparent border-none outline-none text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-[15px]'
             placeholder='What needs to be done?'
             value={title}
             maxLength={200}
@@ -280,7 +280,7 @@ const TaskForm = ({
       >
         {/* Description */}
         <textarea
-          className='w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-800 text-sm resize-none outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 mb-4'
+          className='w-full bg-slate-50 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg p-3 text-slate-800 dark:text-slate-100 text-sm resize-none outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 dark:focus:ring-blue-900/30 mb-4'
           placeholder='Add a description (optional)'
           value={description}
           maxLength={1000}
@@ -291,17 +291,17 @@ const TaskForm = ({
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mb-4'>
           {/* Subtasks */}
           <div className='flex flex-col gap-2'>
-            <label className='text-xs font-semibold text-slate-500 uppercase tracking-wider'>
+            <label className='text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider'>
               Subtasks
             </label>
             <div className='flex flex-col gap-2'>
               {subtasks.map((st, index) => (
                 <div
                   key={index}
-                  className='flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5'
+                  className='flex items-center gap-2 bg-slate-50 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 py-1.5'
                 >
-                  <div className='w-3.5 h-3.5 rounded-sm border-2 border-slate-300 shrink-0' />
-                  <span className='text-sm text-slate-700 flex-1 truncate'>
+                  <div className='w-3.5 h-3.5 rounded-sm border-2 border-slate-300 dark:border-neutral-600 shrink-0' />
+                  <span className='text-sm text-slate-700 dark:text-slate-300 flex-1 truncate'>
                     {st.title}
                   </span>
                   <button
@@ -328,7 +328,7 @@ const TaskForm = ({
               <div className='flex items-center gap-2'>
                 <input
                   type='text'
-                  className='flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50'
+                  className='flex-1 bg-slate-50 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-sm dark:text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 dark:focus:ring-blue-900/30'
                   placeholder='Add a subtask (press Enter)...'
                   value={subtaskInput}
                   onChange={(e) => setSubtaskInput(e.target.value)}
@@ -337,7 +337,7 @@ const TaskForm = ({
                 <button
                   type='button'
                   onClick={addSubtask}
-                  className='p-1.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200'
+                  className='p-1.5 bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-slate-400 rounded-lg hover:bg-slate-200 dark:hover:bg-neutral-700'
                   disabled={!subtaskInput.trim()}
                 >
                   <svg
@@ -361,10 +361,10 @@ const TaskForm = ({
           <div className='flex flex-col gap-4'>
             {/* Tags — multi-select dropdown */}
             <div className='relative z-10' ref={dropdownRef}>
-              <label className='block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2'>
+              <label className='block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2'>
                 Tags
                 {tags.length > 0 && (
-                  <span className='ml-2 normal-case font-normal text-slate-400'>
+                  <span className='ml-2 normal-case font-normal text-slate-400 dark:text-slate-500'>
                     {tags.length}/5
                   </span>
                 )}
@@ -378,10 +378,10 @@ const TaskForm = ({
                 aria-expanded={dropdownOpen}
                 onClick={() => setDropdownOpen((o) => !o)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDropdownOpen((o) => !o); } }}
-                className={`flex flex-wrap gap-1.5 items-center min-h-[38px] bg-slate-50 border rounded-lg p-2 cursor-pointer transition-colors select-none ${
+                className={`flex flex-wrap gap-1.5 items-center min-h-[38px] bg-slate-50 dark:bg-neutral-900 border rounded-lg p-2 cursor-pointer transition-colors select-none ${
                   dropdownOpen
-                    ? 'border-blue-400 ring-2 ring-blue-50'
-                    : 'border-slate-200 hover:border-slate-300'
+                    ? 'border-blue-400 ring-2 ring-blue-50 dark:ring-blue-900/30'
+                    : 'border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600'
                 }`}
               >
                 {tags.length === 0 && (
@@ -430,7 +430,7 @@ const TaskForm = ({
                 <div
                   role='listbox'
                   aria-multiselectable='true'
-                  className='absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-20'
+                  className='absolute top-full left-0 right-0 mt-1 bg-white dark:bg-[#0a0a0a] border border-slate-200 dark:border-neutral-800 rounded-xl shadow-lg overflow-hidden z-20'
                 >
                   {availableTags.length === 0 ? (
                     <div className='px-3 py-3 text-xs text-slate-400 text-center'>
@@ -452,14 +452,14 @@ const TaskForm = ({
                               disabled
                                 ? 'opacity-40 cursor-not-allowed'
                                 : selected
-                                  ? 'bg-indigo-50/60'
-                                  : 'hover:bg-slate-50'
+                                  ? 'bg-indigo-50/60 dark:bg-indigo-900/30'
+                                  : 'hover:bg-slate-50 dark:hover:bg-neutral-900'
                             }`}
                           >
                             {/* Checkbox */}
                             <span
                               className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                                selected ? 'border-transparent' : 'border-slate-300'
+                                selected ? 'border-transparent' : 'border-slate-300 dark:border-neutral-600'
                               }`}
                               style={selected ? { background: tag.color, borderColor: tag.color } : {}}
                             >
@@ -472,7 +472,7 @@ const TaskForm = ({
                             {/* Color dot */}
                             <span className='w-2 h-2 rounded-full shrink-0' style={{ background: tag.color }} />
                             {/* Name */}
-                            <span className='text-sm text-slate-700 flex-1'>{tag.name}</span>
+                            <span className='text-sm text-slate-700 dark:text-slate-300 flex-1'>{tag.name}</span>
                             {/* Default badge */}
                             {tag.isDefault && (
                               <span className='text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-500'>default</span>
@@ -494,14 +494,14 @@ const TaskForm = ({
             {/* Estimates & Due Date */}
             <div className='flex flex-row gap-4 items-start'>
               <div className='flex-1'>
-                <label className='block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2'>
+                <label className='block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2'>
                   Est. Time (Mins)
                 </label>
                 <input
                   type='number'
                   min='0'
                   step='5'
-                  className='w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-1.5 text-slate-800 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50'
+                  className='w-full bg-slate-50 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-md px-3 py-1.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 dark:focus:ring-blue-900/30'
                   placeholder='e.g. 30'
                   value={estimatedMinutes}
                   onChange={(e) => setEstimatedMinutes(e.target.value)}
@@ -509,12 +509,12 @@ const TaskForm = ({
               </div>
 
               <div className='flex-1'>
-                <label className='block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2'>
+                <label className='block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2'>
                   Due Date
                 </label>
                 <input
                   type='date'
-                  className='w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-1.5 text-slate-800 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50'
+                  className='w-full bg-slate-50 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-700 rounded-md px-3 py-1.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 dark:focus:ring-blue-900/30'
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                 />
@@ -524,7 +524,7 @@ const TaskForm = ({
             {/* Priority and Long Term */}
             <div className='flex gap-4'>
               <div className='flex-1'>
-                <label className='block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2'>
+                <label className='block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2'>
                   Priority
                 </label>
                 <div className='flex gap-2 w-full'>
@@ -535,11 +535,11 @@ const TaskForm = ({
                       className={`flex-1 px-3 py-1.5 rounded-md border text-xs font-medium capitalize transition-colors ${
                         priority === p
                           ? p === 'low'
-                            ? 'bg-emerald-50 border-emerald-500 text-emerald-700'
+                            ? 'bg-emerald-50 border-emerald-500 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                             : p === 'medium'
-                              ? 'bg-amber-50 border-amber-500 text-amber-700'
-                              : 'bg-red-50 border-red-500 text-red-700'
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                              ? 'bg-amber-50 border-amber-500 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                              : 'bg-red-50 border-red-500 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-neutral-900 dark:border-neutral-700 dark:text-slate-400 dark:hover:bg-neutral-800'
                       }`}
                       onClick={() => setPriority(p)}
                     >
@@ -550,7 +550,7 @@ const TaskForm = ({
               </div>
 
               <div className='shrink-0'>
-                <label className='block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2'>
+                <label className='block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2'>
                   Keep 24h+
                 </label>
                 <button
@@ -558,12 +558,12 @@ const TaskForm = ({
                   onClick={() => setIsLongTerm(!isLongTerm)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${
                     isLongTerm
-                      ? 'bg-blue-50 border-blue-500 text-blue-700'
-                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-neutral-900 dark:border-neutral-700 dark:text-slate-400 dark:hover:bg-neutral-800'
                   }`}
                 >
                   <div
-                    className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isLongTerm ? 'bg-blue-500 border-blue-500' : 'border-slate-300'}`}
+                    className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${isLongTerm ? 'bg-blue-500 border-blue-500' : 'border-slate-300 dark:border-neutral-600'}`}
                   >
                     {isLongTerm && (
                       <svg
