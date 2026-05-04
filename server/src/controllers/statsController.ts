@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import Task from '../models/Task.js';
+import { validateTz, startOfDayInTz, startOfWeekInTz } from '../utils/timezone.js';
 
 // GET /api/stats/overview — Summary statistics
 export const getOverview = async (
@@ -10,13 +11,10 @@ export const getOverview = async (
 ): Promise<void> => {
   try {
     const uid = new mongoose.Types.ObjectId(req.userId!);
+    const tz = validateTz(req.query.tz);
     const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
+    const today = startOfDayInTz(tz);
+    const startOfWeek = startOfWeekInTz(tz);
 
     const [
       totalTasks,
@@ -81,13 +79,7 @@ export const getOverview = async (
           actual: { $divide: [{ $subtract: ['$completedAt', '$createdAt'] }, 60000] },
         },
       },
-      {
-        $group: {
-          _id: null,
-          totalEstimated: { $sum: '$estimated' },
-          totalActual: { $sum: '$actual' },
-        },
-      },
+      { $group: { _id: null, totalEstimated: { $sum: '$estimated' }, totalActual: { $sum: '$actual' } } },
     ]);
 
     let estimatedVsActualRatio = 0;
@@ -96,31 +88,31 @@ export const getOverview = async (
         Math.round((estimationStats[0].totalEstimated / estimationStats[0].totalActual) * 100) / 100;
     }
 
-    // Streak calculation — fresh Date objects to avoid mutation bugs
+    // Streak — group by local date using the user's timezone
     const completedDates = await Task.aggregate([
       { $match: { userId: uid, status: 'completed', completedAt: { $ne: null }, isDeleted: false } },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$completedAt' } } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$completedAt', timezone: tz } },
+        },
+      },
       { $sort: { _id: -1 } },
     ]);
 
     const distinctDates = completedDates.map((d: { _id: string }) => d._id);
     let currentStreak = 0;
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+    const todayStr = today.toLocaleDateString('en-CA', { timeZone: tz });
+    const yesterdayDate = startOfDayInTz(tz, 1);
+    const yesterdayStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: tz });
 
     if (distinctDates.includes(todayStr) || distinctDates.includes(yesterdayStr)) {
-      // Always create a fresh Date — never mutate the shared yesterday reference
-      const startStr = distinctDates.includes(todayStr) ? todayStr : yesterdayStr;
-      let checkDate = new Date(startStr + 'T00:00:00Z');
-
+      let checkDate = new Date(distinctDates.includes(todayStr) ? today : yesterdayDate);
       while (true) {
-        const checkStr = checkDate.toISOString().split('T')[0];
+        const checkStr = checkDate.toLocaleDateString('en-CA', { timeZone: tz });
         if (distinctDates.includes(checkStr)) {
           currentStreak++;
-          checkDate = new Date(checkDate.getTime() - 86400000); // subtract one day in ms
+          checkDate = new Date(checkDate.getTime() - 86_400_000);
         } else {
           break;
         }
@@ -160,21 +152,29 @@ export const getWeeklyActivity = async (
 ): Promise<void> => {
   try {
     const uid = new mongoose.Types.ObjectId(req.userId!);
+    const tz = validateTz(req.query.tz);
     const days = 7;
-    const now = new Date();
-    const startDate = new Date(now);
-    startDate.setDate(now.getDate() - (days - 1));
-    startDate.setHours(0, 0, 0, 0);
+    const startDate = startOfDayInTz(tz, days - 1);
 
     const [createdByDay, completedByDay] = await Promise.all([
       Task.aggregate([
         { $match: { userId: uid, createdAt: { $gte: startDate }, isDeleted: false } },
-        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: tz } },
+            count: { $sum: 1 },
+          },
+        },
         { $sort: { _id: 1 } },
       ]),
       Task.aggregate([
         { $match: { userId: uid, completedAt: { $gte: startDate, $ne: null }, isDeleted: false } },
-        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$completedAt' } }, count: { $sum: 1 } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$completedAt', timezone: tz } },
+            count: { $sum: 1 },
+          },
+        },
         { $sort: { _id: 1 } },
       ]),
     ]);
@@ -185,12 +185,12 @@ export const getWeeklyActivity = async (
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weeklyData = [];
     for (let i = 0; i < days; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+      const date = new Date(startDate.getTime() + i * 86_400_000);
+      const dateStr = date.toLocaleDateString('en-CA', { timeZone: tz });
+      const dayName = dayNames[new Date(date.toLocaleString('en-US', { timeZone: tz })).getDay()];
       weeklyData.push({
         date: dateStr,
-        day: dayNames[date.getDay()],
+        day: dayName,
         created: createdMap.get(dateStr) || 0,
         completed: completedMap.get(dateStr) || 0,
       });
@@ -210,18 +210,19 @@ export const getMonthlyTrend = async (
 ): Promise<void> => {
   try {
     const uid = new mongoose.Types.ObjectId(req.userId!);
+    const tz = validateTz(req.query.tz);
     const weeks = 4;
-    const now = new Date();
-    const startDate = new Date(now);
-    startDate.setDate(now.getDate() - weeks * 7);
-    startDate.setHours(0, 0, 0, 0);
+    const startDate = startOfDayInTz(tz, weeks * 7);
 
     const weekBoundaries = Array.from({ length: weeks }, (_, i) => {
-      const s = new Date(startDate);
-      s.setDate(startDate.getDate() + i * 7);
-      const e = new Date(s);
-      e.setDate(s.getDate() + 7);
-      return { start: s, end: e, label: `Week ${i + 1}`, startStr: s.toISOString().split('T')[0] };
+      const s = new Date(startDate.getTime() + i * 7 * 86_400_000);
+      const e = new Date(s.getTime() + 7 * 86_400_000);
+      return {
+        start: s,
+        end: e,
+        label: `Week ${i + 1}`,
+        startStr: s.toLocaleDateString('en-CA', { timeZone: tz }),
+      };
     });
 
     const [createdAgg, completedAgg] = await Promise.all([
@@ -249,8 +250,12 @@ export const getMonthlyTrend = async (
       ]),
     ]);
 
-    const createdMap = new Map(createdAgg.filter((b: any) => b._id !== 'other').map((b: any) => [b._id.toISOString(), b.count]));
-    const completedMap = new Map(completedAgg.filter((b: any) => b._id !== 'other').map((b: any) => [b._id.toISOString(), b.count]));
+    const createdMap = new Map(
+      createdAgg.filter((b: any) => b._id !== 'other').map((b: any) => [b._id.toISOString(), b.count]),
+    );
+    const completedMap = new Map(
+      completedAgg.filter((b: any) => b._id !== 'other').map((b: any) => [b._id.toISOString(), b.count]),
+    );
 
     const weeklyData = weekBoundaries.map((w) => ({
       week: w.label,
@@ -341,9 +346,15 @@ export const getDayOfWeekStats = async (
 ): Promise<void> => {
   try {
     const uid = new mongoose.Types.ObjectId(req.userId!);
+    const tz = validateTz(req.query.tz);
     const breakdown = await Task.aggregate([
       { $match: { userId: uid, status: 'completed', completedAt: { $ne: null }, isDeleted: false } },
-      { $group: { _id: { $dayOfWeek: '$completedAt' }, completed: { $sum: 1 } } },
+      {
+        $group: {
+          _id: { $dayOfWeek: { date: '$completedAt', timezone: tz } },
+          completed: { $sum: 1 },
+        },
+      },
       { $sort: { _id: 1 } },
     ]);
 
@@ -370,10 +381,7 @@ export const getVelocityStats = async (
     const breakdown = await Task.aggregate([
       { $match: { userId: uid, status: 'completed', completedAt: { $ne: null }, isDeleted: false } },
       {
-        $project: {
-          priority: 1,
-          timeTakenMs: { $subtract: ['$completedAt', '$createdAt'] },
-        },
+        $project: { priority: 1, timeTakenMs: { $subtract: ['$completedAt', '$createdAt'] } },
       },
       {
         $group: {
@@ -429,7 +437,7 @@ export const getFocusDriftStats = async (
           completedAt: 1,
         },
       },
-      { $sort: { completedAt: -1 } }, // sort before limit
+      { $sort: { completedAt: -1 } },
       { $limit: 10 },
       { $project: { title: 1, estimated: 1, actual: 1 } },
     ]);
@@ -462,7 +470,6 @@ export const getTagEfficiencyStats = async (
       {
         $group: {
           _id: '$tags',
-          // Use actual focus time (seconds) rather than wall-clock time
           avgFocusSeconds: { $avg: '$totalFocusSeconds' },
           count: { $sum: 1 },
         },
@@ -489,9 +496,10 @@ export const getTimeOfDayStats = async (
 ): Promise<void> => {
   try {
     const uid = new mongoose.Types.ObjectId(req.userId!);
+    const tz = validateTz(req.query.tz);
     const breakdown = await Task.aggregate([
       { $match: { userId: uid, status: 'completed', completedAt: { $ne: null }, isDeleted: false } },
-      { $project: { hour: { $hour: '$completedAt' } } },
+      { $project: { hour: { $hour: { date: '$completedAt', timezone: tz } } } },
       {
         $project: {
           bucket: {
@@ -537,13 +545,17 @@ export const getHeatmapStats = async (
 ): Promise<void> => {
   try {
     const uid = new mongoose.Types.ObjectId(req.userId!);
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    oneYearAgo.setHours(0, 0, 0, 0);
+    const tz = validateTz(req.query.tz);
+    const oneYearAgo = startOfDayInTz(tz, 365);
 
     const heatmap = await Task.aggregate([
       { $match: { userId: uid, status: 'completed', completedAt: { $gte: oneYearAgo }, isDeleted: false } },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$completedAt' } }, count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$completedAt', timezone: tz } },
+          count: { $sum: 1 },
+        },
+      },
       { $sort: { _id: 1 } },
     ]);
 

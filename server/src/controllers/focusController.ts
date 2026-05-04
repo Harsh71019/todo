@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import FocusSession from '../models/FocusSession.js';
 import Task from '../models/Task.js';
 import { startSessionSchema, stopSessionSchema } from '../types/focus.js';
+import { validateTz, startOfDayInTz } from '../utils/timezone.js';
 
 const POMODORO_SECONDS = 25 * 60;
 
@@ -109,8 +110,8 @@ export const getSessionsByTask = async (req: Request, res: Response, next: NextF
 export const getFocusToday = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const uid = new mongoose.Types.ObjectId(req.userId!);
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const tz = validateTz(req.query.tz);
+    const startOfDay = startOfDayInTz(tz);
 
     const result = await FocusSession.aggregate([
       { $match: { userId: uid, startedAt: { $gte: startOfDay }, status: { $ne: 'active' } } },
@@ -135,15 +136,14 @@ export const getFocusToday = async (req: Request, res: Response, next: NextFunct
 export const getFocusWeekly = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const uid = new mongoose.Types.ObjectId(req.userId!);
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-    sevenDaysAgo.setHours(0, 0, 0, 0);
+    const tz = validateTz(req.query.tz);
+    const sevenDaysAgo = startOfDayInTz(tz, 6);
 
     const result = await FocusSession.aggregate([
       { $match: { userId: uid, startedAt: { $gte: sevenDaysAgo }, status: { $ne: 'active' } } },
       {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$startedAt' } },
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$startedAt', timezone: tz } },
           totalSeconds: { $sum: '$durationSeconds' },
           pomodoros: { $sum: { $cond: ['$isPomodoro', 1, 0] } },
         },
