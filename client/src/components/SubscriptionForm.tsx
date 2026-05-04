@@ -72,8 +72,8 @@ const SubscriptionForm = ({ subscription, onSave, onDelete, onClose }: Subscript
       await onSave(formData);
       onClose();
     } catch (err) {
-      const message = err instanceof AxiosError 
-        ? err.response?.data?.message 
+      const message = err instanceof AxiosError
+        ? err.response?.data?.error
         : err instanceof Error ? err.message : 'Failed to save subscription';
       setError(message || 'Failed to save subscription');
     } finally {
