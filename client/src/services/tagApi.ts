@@ -4,6 +4,7 @@ import type { Tag, CreateTagPayload, UpdateTagPayload } from '../types/tag';
 const api = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
 interface TagApiResponse<T> {

@@ -3,7 +3,7 @@ import { useTasks } from '../hooks/useTasks';
 import { useTags } from '../hooks/useTags';
 import TaskForm from '../components/TaskForm';
 import TaskList from '../components/TaskList';
-import FocusModal from '../components/FocusModal';
+import TaskDetailModal from '../components/TaskDetailModal';
 import type { Task, CreateTaskPayload } from '../types/task';
 
 const TasksPage = () => {
@@ -28,6 +28,7 @@ const TasksPage = () => {
     removeTask,
     toggleSubtask,
     editTask,
+    archiveTask,
   } = useTasks();
 
   const { tags: availableTags } = useTags();
@@ -270,6 +271,7 @@ const TasksPage = () => {
         loading={loading}
         onToggle={toggleTask}
         onDelete={removeTask}
+        onArchive={archiveTask}
         onDuplicate={duplicateTask}
         onEdit={(task) => setEditingTask(task)}
         onToggleSubtask={toggleSubtask}
@@ -317,13 +319,16 @@ const TasksPage = () => {
       )}
 
       {focusTask && (
-        <FocusModal
+        <TaskDetailModal
           task={focusTask}
           onClose={() => setFocusTask(null)}
-          onComplete={() => {
-            if (focusTask.status !== 'completed') {
-              toggleTask(focusTask._id);
-            }
+          onToggle={toggleTask}
+          onToggleSubtask={toggleSubtask}
+          onDelete={removeTask}
+          onArchive={archiveTask}
+          onEdit={(task) => {
+            setEditingTask(task);
+            setFocusTask(null);
           }}
         />
       )}

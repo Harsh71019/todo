@@ -36,6 +36,7 @@ export interface ITask {
   completedAt?: Date;
   deletedAt?: Date;
   updatedAt: Date;
+  isArchived?: boolean;
 }
 
 export const subtaskSchema = z.object({
@@ -61,13 +62,16 @@ export const updateTaskSchema = z.object({
   status: z.enum(['pending', 'completed']).optional(),
   tags: z.array(z.string().min(1).max(30)).max(5).optional(),
   estimatedMinutes: z.number().min(0).max(1440).optional(),
-  subtasks: z.array(
-    z.object({
-      _id: z.string().optional(),
-      title: z.string().min(1).max(200),
-      isCompleted: z.boolean(),
-    })
-  ).max(20).optional(),
+  subtasks: z
+    .array(
+      z.object({
+        _id: z.string().optional(),
+        title: z.string().min(1).max(200),
+        isCompleted: z.boolean(),
+      }),
+    )
+    .max(20)
+    .optional(),
   isLongTerm: z.boolean().optional(),
   isDeleted: z.boolean().optional(),
   dueDate: z.string().datetime().nullable().optional(),

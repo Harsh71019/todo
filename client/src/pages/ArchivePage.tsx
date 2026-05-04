@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTasks } from '../hooks/useTasks';
 import TaskList from '../components/TaskList';
-import FocusModal from '../components/FocusModal';
+import TaskDetailModal from '../components/TaskDetailModal';
 import type { Task } from '../types/task';
 
 const ArchivePage = () => {
@@ -20,6 +20,7 @@ const ArchivePage = () => {
     toggleTask,
     removeTask,
     toggleSubtask,
+    unarchiveTask,
   } = useTasks('archive');
 
   const [focusTask, setFocusTask] = useState<Task | null>(null);
@@ -48,7 +49,7 @@ const ArchivePage = () => {
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Archive</h2>
           <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1">
-            All tasks you've ever created, safely stored here.
+            Historical tasks that have moved off your main active list.
           </p>
         </div>
       </header>
@@ -136,19 +137,18 @@ const ArchivePage = () => {
         loading={loading}
         onToggle={toggleTask}
         onDelete={removeTask}
+        onUnarchive={unarchiveTask}
         onToggleSubtask={toggleSubtask}
         onFocusStart={(task) => setFocusTask(task)}
       />
 
       {focusTask && (
-        <FocusModal
+        <TaskDetailModal
           task={focusTask}
           onClose={() => setFocusTask(null)}
-          onComplete={() => {
-            if (focusTask.status !== 'completed') {
-              toggleTask(focusTask._id);
-            }
-          }}
+          onToggle={toggleTask}
+          onToggleSubtask={toggleSubtask}
+          onDelete={removeTask}
         />
       )}
     </div>

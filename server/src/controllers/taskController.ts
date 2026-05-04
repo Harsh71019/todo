@@ -12,17 +12,29 @@ export const getAllTasks = async (req: Request, res: Response, next: NextFunctio
     const filter: Record<string, unknown> = {};
 
     // View Filtering Logic
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     if (view === 'trash') {
       filter.isDeleted = true;
+    } else if (view === 'completed') {
+      filter.isDeleted = false;
+      filter.status = 'completed';
     } else if (view === 'archive') {
-      filter.isDeleted = false; // Show everything not in trash
+      filter.isDeleted = false;
+      // Archive view now only shows tasks explicitly moved there
+      filter.isArchived = true;
     } else {
       // view === 'active'
       filter.isDeleted = false;
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      filter.isArchived = { $ne: true }; // Don't show archived in active
+      
+      // Active shows:
+      // 1. Pending tasks (created anytime)
+      // 2. Tasks completed today
       filter.$or = [
-        { isLongTerm: true }, // Keep long-term tasks always
-        { createdAt: { $gt: oneDayAgo } } // Keep tasks created within the last 24 hours
+        { status: 'pending' },
+        { completedAt: { $gte: startOfToday } }
       ];
     }
 
@@ -152,6 +164,46 @@ export const permanentlyDeleteTask = async (req: Request, res: Response, next: N
     }
 
     res.json({ success: true, message: 'Task permanently deleted' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/tasks/:id/archive — Move a task to archive
+export const archiveTask = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const task = await Task.findByIdAndUpdate(
+      req.params.id,
+      { isArchived: true },
+      { new: true }
+    );
+
+    if (!task) {
+      res.status(404).json({ success: false, error: 'Task not found' });
+      return;
+    }
+
+    res.json({ success: true, data: task });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/tasks/:id/unarchive — Restore a task from archive
+export const unarchiveTask = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const task = await Task.findByIdAndUpdate(
+      req.params.id,
+      { isArchived: false },
+      { new: true }
+    );
+
+    if (!task) {
+      res.status(404).json({ success: false, error: 'Task not found' });
+      return;
+    }
+
+    res.json({ success: true, data: task });
   } catch (error) {
     next(error);
   }

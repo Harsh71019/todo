@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { useTasks } from '../hooks/useTasks';
 import TaskList from '../components/TaskList';
+import TaskDetailModal from '../components/TaskDetailModal';
+import type { Task } from '../types/task';
 
 const TrashPage = () => {
   const {
@@ -9,7 +12,11 @@ const TrashPage = () => {
     setSearchQuery,
     restoreTask,
     permanentlyDeleteTask,
+    toggleTask,
+    toggleSubtask,
   } = useTasks('trash');
+
+  const [focusTask, setFocusTask] = useState<Task | null>(null);
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
@@ -41,11 +48,23 @@ const TrashPage = () => {
       <TaskList
         tasks={tasks}
         loading={loading}
-        onToggle={() => {}} // Disabled in trash
+        onToggle={toggleTask}
         onDelete={() => {}} // Used permanentlyDelete instead
         onRestore={restoreTask}
         onPermanentDelete={permanentlyDeleteTask}
+        onToggleSubtask={toggleSubtask}
+        onFocusStart={(task) => setFocusTask(task)}
       />
+
+      {focusTask && (
+        <TaskDetailModal
+          task={focusTask}
+          onClose={() => setFocusTask(null)}
+          onToggle={toggleTask}
+          onToggleSubtask={toggleSubtask}
+          onDelete={permanentlyDeleteTask}
+        />
+      )}
     </div>
   );
 };

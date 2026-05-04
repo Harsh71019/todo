@@ -12,6 +12,8 @@ interface TaskListProps {
   onFocusStart?: (task: Task) => void;
   onRestore?: (id: string) => void;
   onPermanentDelete?: (id: string) => void;
+  onArchive?: (id: string) => void;
+  onUnarchive?: (id: string) => void;
 }
 
 const TaskListSkeleton = () => (
@@ -42,6 +44,8 @@ const TaskList = ({
   onFocusStart,
   onRestore,
   onPermanentDelete,
+  onArchive,
+  onUnarchive,
 }: TaskListProps) => {
   if (loading) {
     return <TaskListSkeleton />;
@@ -112,6 +116,7 @@ const TaskList = ({
       { label: 'Tomorrow', tasks: [], color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400' },
       { label: 'Upcoming', tasks: [], color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 dark:text-indigo-400' },
       { label: 'No Date', tasks: [], color: 'text-slate-600 bg-slate-50 dark:bg-neutral-900 dark:text-slate-400' },
+      { label: 'Completed Today', tasks: [], color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400' },
     ];
 
     const today = new Date();
@@ -120,25 +125,40 @@ const TaskList = ({
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     tasks.forEach((t) => {
+      // 1. Check if it was completed today (special group for active view)
+      if (t.status === 'completed' && t.completedAt) {
+        const compDate = new Date(t.completedAt);
+        compDate.setHours(0, 0, 0, 0);
+        if (compDate.getTime() === today.getTime()) {
+          groups[5].tasks.push(t);
+          return;
+        }
+      }
+
+      // 2. Otherwise group by due date (Pending or older completions)
       if (!t.dueDate) {
         groups[4].tasks.push(t);
         return;
       }
+
       const d = new Date(t.dueDate);
       d.setHours(0, 0, 0, 0);
 
-      if (
-        d.getTime() < today.getTime() &&
-        t.status === 'pending' &&
-        !t.isDeleted
-      ) {
-        groups[0].tasks.push(t);
+      if (d.getTime() < today.getTime()) {
+        if (t.status === 'pending') {
+          groups[0].tasks.push(t); // Overdue
+        } else {
+          // If completed but not today (e.g. historical completed view), 
+          // just put in upcoming or keep original order.
+          // For now, let's put them in 'No Date' or a catch-all if they don't fit
+          groups[4].tasks.push(t); 
+        }
       } else if (d.getTime() === today.getTime()) {
-        groups[1].tasks.push(t);
+        groups[1].tasks.push(t); // Today
       } else if (d.getTime() === tomorrow.getTime()) {
-        groups[2].tasks.push(t);
+        groups[2].tasks.push(t); // Tomorrow
       } else {
-        groups[3].tasks.push(t);
+        groups[3].tasks.push(t); // Upcoming
       }
     });
 
@@ -175,6 +195,8 @@ const TaskList = ({
                 onFocusStart={onFocusStart}
                 onRestore={onRestore}
                 onPermanentDelete={onPermanentDelete}
+                onArchive={onArchive}
+                onUnarchive={onUnarchive}
               />
             ))}
           </div>

@@ -497,3 +497,185 @@ export const getVelocityStats = async (
     next(error);
   }
 };
+
+// GET /api/stats/focus-drift — Estimated vs Actual time taken
+export const getFocusDriftStats = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const stats = await Task.aggregate([
+      {
+        $match: {
+          status: 'completed',
+          completedAt: { $ne: null },
+          estimatedMinutes: { $gt: 0 },
+          isDeleted: false,
+        },
+      },
+      {
+        $project: {
+          title: 1,
+          estimated: '$estimatedMinutes',
+          actual: {
+            $divide: [{ $subtract: ['$completedAt', '$createdAt'] }, 60000],
+          },
+        },
+      },
+      { $limit: 10 }, // Last 10 tasks
+      { $sort: { completedAt: -1 } },
+    ]);
+
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/stats/tag-efficiency — Avg time to complete by tag
+export const getTagEfficiencyStats = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const stats = await Task.aggregate([
+      {
+        $match: {
+          status: 'completed',
+          completedAt: { $ne: null },
+          tags: { $exists: true, $ne: [] },
+          isDeleted: false,
+        },
+      },
+      { $unwind: '$tags' },
+      {
+        $group: {
+          _id: '$tags',
+          avgMinutes: {
+            $avg: {
+              $divide: [{ $subtract: ['$completedAt', '$createdAt'] }, 60000],
+            },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { avgMinutes: 1 } },
+    ]);
+
+    const data = stats.map((item: { _id: string; avgMinutes: number; count: number }) => ({
+      tag: item._id,
+      avgHours: Math.round((item.avgMinutes / 60) * 10) / 10,
+      count: item.count,
+    }));
+
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+export const getTimeOfDayStats = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const breakdown = await Task.aggregate([
+      {
+        $match: {
+          status: 'completed',
+          completedAt: { $ne: null },
+          isDeleted: false,
+        },
+      },
+      {
+        $project: {
+          hour: { $hour: '$completedAt' },
+        },
+      },
+      {
+        $project: {
+          bucket: {
+            $cond: [
+              { $and: [{ $gte: ['$hour', 6] }, { $lt: ['$hour', 12] }] },
+              'Morning',
+              {
+                $cond: [
+                  { $and: [{ $gte: ['$hour', 12] }, { $lt: ['$hour', 18] }] },
+                  'Afternoon',
+                  {
+                    $cond: [
+                      { $and: [{ $gte: ['$hour', 18] }, { $lt: ['$hour', 24] }] },
+                      'Evening',
+                      'Night',
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$bucket',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const buckets = ['Morning', 'Afternoon', 'Evening', 'Night'];
+    const data = buckets.map((bucket) => {
+      const found = breakdown.find((b: { _id: string }) => b._id === bucket);
+      return {
+        bucket,
+        count: found?.count || 0,
+      };
+    });
+
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+export const getHeatmapStats = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    oneYearAgo.setHours(0, 0, 0, 0);
+
+    const heatmap = await Task.aggregate([
+      {
+        $match: {
+          status: 'completed',
+          completedAt: { $gte: oneYearAgo },
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: '%Y-%m-%d', date: '$completedAt' },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // Format for easier consumption by frontend
+    const data = heatmap.map((item: { _id: string; count: number }) => ({
+      date: item._id,
+      count: item.count,
+    }));
+
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};

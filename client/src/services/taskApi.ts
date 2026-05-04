@@ -11,11 +11,16 @@ import type {
   TagBreakdown,
   DayOfWeekStats,
   VelocityStats,
+  HeatmapData,
+  TimeOfDayStats,
+  FocusDriftStats,
+  TagEfficiencyStats,
 } from '../types/task';
 
 const api = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
 // ─── Task CRUD ───────────────────────────────────────────
@@ -44,6 +49,16 @@ export const updateTask = async (id: string, payload: UpdateTaskPayload): Promis
 
 export const deleteTask = async (id: string): Promise<void> => {
   await api.delete(`/tasks/${id}`);
+};
+
+export const archiveTask = async (id: string): Promise<Task> => {
+  const { data } = await api.patch<ApiResponse<Task>>(`/tasks/${id}/archive`);
+  return data.data;
+};
+
+export const unarchiveTask = async (id: string): Promise<Task> => {
+  const { data } = await api.patch<ApiResponse<Task>>(`/tasks/${id}/unarchive`);
+  return data.data;
 };
 
 export const permanentlyDeleteTask = async (id: string): Promise<void> => {
@@ -84,5 +99,25 @@ export const getDayOfWeekStats = async (): Promise<DayOfWeekStats[]> => {
 
 export const getVelocityStats = async (): Promise<VelocityStats[]> => {
   const response = await api.get('/stats/velocity');
+  return response.data.data;
+};
+
+export const getHeatmapStats = async (): Promise<HeatmapData[]> => {
+  const response = await api.get('/stats/heatmap');
+  return response.data.data;
+};
+
+export const getTimeOfDayStats = async (): Promise<TimeOfDayStats[]> => {
+  const response = await api.get('/stats/time-of-day');
+  return response.data.data;
+};
+
+export const getFocusDriftStats = async (): Promise<FocusDriftStats[]> => {
+  const response = await api.get('/stats/focus-drift');
+  return response.data.data;
+};
+
+export const getTagEfficiencyStats = async (): Promise<TagEfficiencyStats[]> => {
+  const response = await api.get('/stats/tag-efficiency');
   return response.data.data;
 };

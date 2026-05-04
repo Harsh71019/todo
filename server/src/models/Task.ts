@@ -57,6 +57,10 @@ const taskSchema = new Schema<ITaskDocument>(
       type: Boolean,
       default: false,
     },
+    isArchived: {
+      type: Boolean,
+      default: false,
+    },
     dueDate: {
       type: Date,
       default: null,
@@ -78,6 +82,7 @@ const taskSchema = new Schema<ITaskDocument>(
 // Indexes for efficient queries
 taskSchema.index({ isDeleted: 1, status: 1 }); // Great for active vs completed filters
 taskSchema.index({ isDeleted: 1, createdAt: -1 }); // Great for recent active tasks
+taskSchema.index({ isArchived: 1 });
 taskSchema.index({ status: 1 });
 taskSchema.index({ createdAt: -1 });
 taskSchema.index({ completedAt: -1 });

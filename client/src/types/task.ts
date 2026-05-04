@@ -18,6 +18,7 @@ export interface Task {
   subtasks: Subtask[];
   isLongTerm: boolean;
   isDeleted: boolean;
+  isArchived: boolean;
   dueDate?: string;
   createdAt: string;
   completedAt?: string;
@@ -46,6 +47,7 @@ export interface UpdateTaskPayload {
   subtasks?: Subtask[];
   isLongTerm?: boolean;
   isDeleted?: boolean;
+  isArchived?: boolean;
   dueDate?: string | null;
 }
 
@@ -114,4 +116,26 @@ export interface VelocityStats {
   fastestHours: number | null;
   longestHours: number | null;
   avgHours: number | null;
+}
+
+export interface HeatmapData {
+  date: string;
+  count: number;
+}
+
+export interface TimeOfDayStats {
+  bucket: string;
+  count: number;
+}
+
+export interface FocusDriftStats {
+  title: string;
+  estimated: number;
+  actual: number;
+}
+
+export interface TagEfficiencyStats {
+  tag: string;
+  avgHours: number;
+  count: number;
 }

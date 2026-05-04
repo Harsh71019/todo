@@ -28,8 +28,13 @@ import type {
   TagBreakdown,
   DayOfWeekStats,
   VelocityStats,
+  HeatmapData,
+  TimeOfDayStats,
+  FocusDriftStats,
+  TagEfficiencyStats,
 } from '../types/task';
 import StatCard from '../components/StatCard';
+import HeatmapChart from '../components/HeatmapChart';
 
 const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
@@ -40,13 +45,17 @@ const DashboardPage = () => {
   const [, setTags] = useState<TagBreakdown[]>([]);
   const [dayOfWeek, setDayOfWeek] = useState<DayOfWeekStats[]>([]);
   const [velocity, setVelocity] = useState<VelocityStats[]>([]);
+  const [heatmap, setHeatmap] = useState<HeatmapData[]>([]);
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDayStats[]>([]);
+  const [focusDrift, setFocusDrift] = useState<FocusDriftStats[]>([]);
+  const [tagEfficiency, setTagEfficiency] = useState<TagEfficiencyStats[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         setLoading(true);
-        const [oData, wData, mData, pData, tData, dData, vData] =
+        const [oData, wData, mData, pData, tData, dData, vData, hData, todData, fdData, teData] =
           await Promise.all([
             taskApi.getStatsOverview(),
             taskApi.getWeeklyActivity(),
@@ -55,6 +64,10 @@ const DashboardPage = () => {
             taskApi.getTagsBreakdown(),
             taskApi.getDayOfWeekStats(),
             taskApi.getVelocityStats(),
+            taskApi.getHeatmapStats(),
+            taskApi.getTimeOfDayStats(),
+            taskApi.getFocusDriftStats(),
+            taskApi.getTagEfficiencyStats(),
           ]);
         setOverview(oData);
         setWeekly(wData);
@@ -63,6 +76,10 @@ const DashboardPage = () => {
         setTags(tData);
         setDayOfWeek(dData);
         setVelocity(vData);
+        setHeatmap(hData);
+        setTimeOfDay(todData);
+        setFocusDrift(fdData);
+        setTagEfficiency(teData);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : 'Failed to load dashboard',
@@ -292,12 +309,11 @@ const DashboardPage = () => {
         <StatCard
           title='In Trash'
           value={overview.trashCount}
-          subtitle='Tasks pending permanent deletion'
-          color='red'
+          subtitle='Deleted tasks'
           icon={
             <svg
-              width='24'
-              height='24'
+              width='20'
+              height='20'
               viewBox='0 0 24 24'
               fill='none'
               stroke='currentColor'
@@ -312,7 +328,46 @@ const DashboardPage = () => {
         />
       </div>
 
-      <div className='grid grid-cols-1 xl:grid-cols-3 lg:grid-cols-2 gap-6 mb-6'>
+      <div className='mb-8'>
+        <HeatmapChart data={heatmap} />
+      </div>
+
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8'>
+        {/* Radar Chart: Productivity by Time of Day */}
+        <div className='bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6 shadow-sm'>
+          <h3 className='text-base font-bold text-slate-800 dark:text-slate-100 mb-1'>
+            Peak Performance Time
+          </h3>
+          <p className='text-xs text-slate-500 dark:text-slate-400 mb-6'>
+            Your productivity distribution throughout the day
+          </p>
+          <div className='h-64 w-full'>
+            <ResponsiveContainer width='100%' height='100%'>
+              <RadarChart cx='50%' cy='50%' outerRadius='70%' data={timeOfDay}>
+                <PolarGrid stroke='#e2e8f0' />
+                <PolarAngleAxis
+                  dataKey='bucket'
+                  tick={{ fill: '#64748b', fontSize: 12 }}
+                />
+                <Radar
+                  name='Completed Tasks'
+                  dataKey='count'
+                  stroke='#f59e0b'
+                  fill='#f59e0b'
+                  fillOpacity={0.4}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                  }}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
         {/* Radar Chart: Productivity by Day of Week */}
         <div className='bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6 shadow-sm'>
           <h3 className='text-base font-bold text-slate-800 dark:text-slate-100 mb-1'>
@@ -626,6 +681,56 @@ const DashboardPage = () => {
                 </PieChart>
               </ResponsiveContainer>
             )}
+          </div>
+        </div>
+      </div>
+
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+        {/* Focus vs Drift: Estimated vs Actual */}
+        <div className='bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6 shadow-sm'>
+          <h3 className='text-base font-bold text-slate-800 dark:text-slate-100 mb-1'>
+            Focus vs. Drift
+          </h3>
+          <p className='text-xs text-slate-500 dark:text-slate-400 mb-6'>
+            Estimation accuracy (Estimated vs. Actual minutes)
+          </p>
+          <div className='h-64 w-full'>
+            <ResponsiveContainer width='100%' height='100%'>
+              <BarChart data={focusDrift} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray='3 3' vertical={false} stroke='#e2e8f0' />
+                <XAxis dataKey='title' hide />
+                <YAxis tick={{ fill: '#64748b', fontSize: 12 }} />
+                <Tooltip />
+                <Legend />
+                <Bar name="Estimated" dataKey="estimated" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar name="Actual" dataKey="actual" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Tag Efficiency: Avg Hours per Tag */}
+        <div className='bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6 shadow-sm'>
+          <h3 className='text-base font-bold text-slate-800 dark:text-slate-100 mb-1'>
+            Tag Efficiency Leaderboard
+          </h3>
+          <p className='text-xs text-slate-500 dark:text-slate-400 mb-6'>
+            Average hours to complete tasks by category
+          </p>
+          <div className='h-64 w-full'>
+            <ResponsiveContainer width='100%' height='100%'>
+              <BarChart
+                layout="vertical"
+                data={tagEfficiency}
+                margin={{ top: 0, right: 30, left: 40, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray='3 3' horizontal={false} stroke='#e2e8f0' />
+                <XAxis type="number" tick={{ fill: '#64748b', fontSize: 12 }} />
+                <YAxis dataKey="tag" type="category" tick={{ fill: '#64748b', fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="avgHours" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>

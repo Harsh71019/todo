@@ -24,13 +24,15 @@ interface UseTasksReturn {
   removeTask: (id: string) => Promise<void>;
   permanentlyDeleteTask: (id: string) => Promise<void>;
   restoreTask: (id: string) => Promise<void>;
+  archiveTask: (id: string) => Promise<void>;
+  unarchiveTask: (id: string) => Promise<void>;
   editTask: (id: string, payload: UpdateTaskPayload) => Promise<void>;
   toggleSubtask: (taskId: string, subtaskIndex: number) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
 export const useTasks = (
-  view: 'active' | 'archive' | 'trash' = 'active',
+  view: 'active' | 'archive' | 'trash' | 'completed' = 'active',
 ): UseTasksReturn => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -200,6 +202,35 @@ export const useTasks = (
     toast.success('Task restored');
   };
 
+  const archiveTask = async (id: string) => {
+    await taskApi.archiveTask(id);
+    setTasks((prev) => prev.filter((t) => t._id !== id));
+
+    toast(
+      (t) => (
+        <span className='flex items-center gap-3'>
+          Moved to archive
+          <button
+            className='px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-xs font-bold transition-colors'
+            onClick={() => {
+              unarchiveTask(id);
+              toast.dismiss(t.id);
+            }}
+          >
+            UNDO
+          </button>
+        </span>
+      ),
+      { duration: 5000 },
+    );
+  };
+
+  const unarchiveTask = async (id: string) => {
+    await taskApi.unarchiveTask(id);
+    refresh();
+    toast.success('Task restored from archive');
+  };
+
   const editTask = async (id: string, payload: UpdateTaskPayload) => {
     const updated = await taskApi.updateTask(id, payload);
     setTasks((prev) => prev.map((t) => (t._id === id ? updated : t)));
@@ -240,6 +271,8 @@ export const useTasks = (
     removeTask,
     permanentlyDeleteTask,
     restoreTask,
+    archiveTask,
+    unarchiveTask,
     editTask,
     toggleSubtask,
     refresh,
