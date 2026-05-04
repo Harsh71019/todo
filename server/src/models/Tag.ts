@@ -41,7 +41,6 @@ const tagSchema = new Schema<ITagDocument>(
       type: String,
       trim: true,
       maxlength: [100, 'Description cannot exceed 100 characters'],
-      default: '',
     },
   },
   {
