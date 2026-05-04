@@ -96,7 +96,8 @@ app.get(/(.*)/, (req, res, next) => {
   res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
-app.use(notFound);
+// Only catch unmatched /api routes — the SPA catch-all above handles everything else
+app.use('/api', notFound);
 app.use(errorHandler);
 
 const start = async () => {
