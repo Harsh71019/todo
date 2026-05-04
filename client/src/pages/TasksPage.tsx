@@ -4,6 +4,8 @@ import { useTags } from '../hooks/useTags';
 import TaskForm from '../components/TaskForm';
 import TaskList from '../components/TaskList';
 import TaskDetailModal from '../components/TaskDetailModal';
+import { useTimer } from '../context/TimerContext';
+import FloatingTimer from '../components/FloatingTimer';
 import type { Task, CreateTaskPayload } from '../types/task';
 
 const TasksPage = () => {
@@ -32,8 +34,8 @@ const TasksPage = () => {
   } = useTasks();
 
   const { tags: availableTags } = useTags();
+  const { focusTask, setFocusTask, startTimer } = useTimer();
 
-  const [focusTask, setFocusTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   useEffect(() => {
@@ -94,20 +96,23 @@ const TasksPage = () => {
   return (
     <div className='animate-in fade-in slide-in-from-bottom-4 duration-500 relative'>
       <header className='mb-6 lg:mb-8'>
-        <div>
-          <h2 className='text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight'>
-            My Tasks
-          </h2>
-          <p className='text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1'>
-            <span className='font-medium text-slate-700 dark:text-slate-200'>
-              {taskCounts.pending}
-            </span>{' '}
-            pending ·{' '}
-            <span className='font-medium text-slate-700 dark:text-slate-200'>
-              {taskCounts.completed}
-            </span>{' '}
-            completed
-          </p>
+        <div className='flex items-start justify-between gap-4'>
+          <div>
+            <h2 className='text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight'>
+              My Tasks
+            </h2>
+            <p className='text-sm sm:text-base text-slate-500 dark:text-slate-400 mt-1'>
+              <span className='font-medium text-slate-700 dark:text-slate-200'>
+                {taskCounts.pending}
+              </span>{' '}
+              pending ·{' '}
+              <span className='font-medium text-slate-700 dark:text-slate-200'>
+                {taskCounts.completed}
+              </span>{' '}
+              completed
+            </p>
+          </div>
+          <FloatingTimer />
         </div>
       </header>
 
@@ -275,7 +280,7 @@ const TasksPage = () => {
         onDuplicate={duplicateTask}
         onEdit={(task) => setEditingTask(task)}
         onToggleSubtask={toggleSubtask}
-        onFocusStart={(task) => setFocusTask(task)}
+        onFocusStart={(task) => { startTimer(task); setFocusTask(task); }}
       />
 
       {editingTask && (
