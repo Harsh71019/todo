@@ -40,14 +40,14 @@ const TaskDetailModal = ({
   onArchive,
   onEdit
 }: TaskDetailModalProps) => {
-  const { activeTask, timeLeft, isActive, startTimer, pauseTimer, resumeTimer, resetTimer, completeTimer } = useTimer();
+  const { activeTask, timeLeft, isActive, phase, pomodoroCount, startTimer, pauseTimer, resumeTimer, resetTimer, completeTimer, skipBreak } = useTimer();
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const isCompleted = task.status === 'completed';
 
   useEffect(() => {
     startTimer(task);
     getSessionsByTask(task._id).then(setSessions).catch(() => {});
-  }, [task._id]);
+  }, [task._id, task, startTimer]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -56,11 +56,26 @@ const TaskDetailModal = ({
   };
 
   const POMODORO = 25 * 60;
+  const SHORT_BREAK = 5 * 60;
+  const LONG_BREAK = 15 * 60;
+
+  const getPhaseInfo = () => {
+    switch (phase) {
+      case 'short-break': return { label: 'Short Break', duration: SHORT_BREAK, color: 'text-emerald-500', bg: 'bg-emerald-500' };
+      case 'long-break': return { label: 'Long Break', duration: LONG_BREAK, color: 'text-violet-500', bg: 'bg-violet-500' };
+      default: return { label: 'Focus Mode', duration: POMODORO, color: 'text-blue-500', bg: 'bg-blue-500' };
+    }
+  };
+
+  const phaseInfo = getPhaseInfo();
+  const isBreak = phase === 'short-break' || phase === 'long-break';
   const displayTimeLeft = activeTask?._id === task._id ? timeLeft : POMODORO;
-  const progress = ((POMODORO - displayTimeLeft) / POMODORO) * 100;
+  const progress = ((phaseInfo.duration - displayTimeLeft) / phaseInfo.duration) * 100;
 
   const totalSessionSeconds = sessions.reduce((acc, s) => acc + s.durationSeconds, 0);
   const sessionPomodoros = sessions.filter(s => s.isPomodoro).length;
+
+  const currentCycleCount = pomodoroCount % 4 === 0 && pomodoroCount > 0 ? 4 : pomodoroCount % 4;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 dark:bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-300">
@@ -179,43 +194,60 @@ const TaskDetailModal = ({
 
         {/* Right Side: Focus Timer */}
         <div className="w-full md:w-80 bg-slate-50 dark:bg-[#0f0f0f] p-8 md:p-12 border-t md:border-t-0 md:border-l border-slate-200 dark:border-neutral-800 flex flex-col items-center justify-center relative">
-          <div className="absolute top-0 left-0 h-1 md:h-full md:w-1 bg-blue-500 transition-all duration-1000 ease-linear" style={{ [window.innerWidth > 768 ? 'height' : 'width']: `${progress}%` }} />
+          <div className="absolute top-0 left-0 h-1 md:h-full md:w-1 bg-current transition-all duration-1000 ease-linear" style={{ [window.innerWidth > 768 ? 'height' : 'width']: `${progress}%`, color: phaseInfo.bg.replace('bg-', '') }} />
 
-          <div className="text-blue-500 mb-6 bg-white dark:bg-neutral-800 p-4 rounded-3xl shadow-xl shadow-blue-500/10">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <div className={`${phaseInfo.color} mb-6 bg-white dark:bg-neutral-800 p-4 rounded-3xl shadow-xl shadow-current/10`}>
+            {isBreak ? (
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+            ) : (
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            )}
           </div>
 
-          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-2">Focus Mode</h4>
+          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-2">{phaseInfo.label}</h4>
 
-          {/* Pomodoro count */}
-          {task.completedPomodoros > 0 && (
-            <p className="text-xs text-slate-400 dark:text-slate-500 mb-4">
-              🍅 {task.completedPomodoros} pomodoro{task.completedPomodoros !== 1 ? 's' : ''} completed
-            </p>
-          )}
+          {/* Pomodoro count / dots */}
+          <div className="flex items-center gap-1.5 mb-4">
+            {[1, 2, 3, 4].map(i => (
+              <span key={i} className={`text-lg ${i <= currentCycleCount ? 'grayscale-0 opacity-100' : 'grayscale opacity-30'}`}>
+                🍅
+              </span>
+            ))}
+          </div>
 
-          <div className="text-6xl font-bold text-slate-900 dark:text-white tabular-nums tracking-tighter mb-10 font-mono">
+          <div className={`text-6xl font-bold tabular-nums tracking-tighter mb-10 font-mono ${isBreak ? phaseInfo.color : 'text-slate-900 dark:text-white'}`}>
             {formatTime(displayTimeLeft)}
           </div>
 
           <div className="flex flex-col gap-3 w-full">
-            <button
-              onClick={isActive ? pauseTimer : resumeTimer}
-              className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all ${
-                isActive
-                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                  : 'bg-blue-600 text-white shadow-xl shadow-blue-500/20'
-              }`}
-            >
-              {isActive ? 'Pause' : 'Start Focus'}
-            </button>
+            {isBreak ? (
+              <button
+                onClick={skipBreak}
+                className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all bg-white dark:bg-neutral-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-neutral-700 hover:bg-slate-50 dark:hover:bg-neutral-700 shadow-sm`}
+              >
+                Skip Break
+              </button>
+            ) : (
+              <button
+                onClick={isActive ? pauseTimer : resumeTimer}
+                className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all ${
+                  isActive
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                    : 'bg-blue-600 text-white shadow-xl shadow-blue-500/20'
+                }`}
+              >
+                {isActive ? 'Pause' : 'Start Focus'}
+              </button>
+            )}
 
-            <button
-              onClick={resetTimer}
-              className="w-full py-2 rounded-2xl font-bold uppercase tracking-widest text-xs text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 transition-all"
-            >
-              Reset
-            </button>
+            {!isBreak && (
+              <button
+                onClick={resetTimer}
+                className="w-full py-2 rounded-2xl font-bold uppercase tracking-widest text-xs text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 transition-all"
+              >
+                Reset
+              </button>
+            )}
 
             <button
               onClick={() => { onToggle(task._id); completeTimer(); onClose(); }}
