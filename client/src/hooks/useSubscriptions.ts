@@ -15,8 +15,8 @@ export const useSubscriptions = () => {
       setSubscriptions(data);
       setError(null);
     } catch (err) {
-      const message = err instanceof AxiosError 
-        ? err.response?.data?.message 
+      const message = err instanceof AxiosError
+        ? err.response?.data?.error
         : err instanceof Error ? err.message : 'Failed to fetch subscriptions';
       setError(message || 'Failed to fetch subscriptions');
     } finally {
@@ -36,7 +36,7 @@ export const useSubscriptions = () => {
       return newSub;
     } catch (err) {
       const message = err instanceof AxiosError 
-        ? err.response?.data?.message 
+        ? err.response?.data?.error 
         : err instanceof Error ? err.message : 'Failed to add subscription';
       throw new Error(message || 'Failed to add subscription', { cause: err });
     }
@@ -49,7 +49,7 @@ export const useSubscriptions = () => {
       return updatedSub;
     } catch (err) {
       const message = err instanceof AxiosError 
-        ? err.response?.data?.message 
+        ? err.response?.data?.error 
         : err instanceof Error ? err.message : 'Failed to update subscription';
       throw new Error(message || 'Failed to update subscription', { cause: err });
     }
@@ -61,7 +61,7 @@ export const useSubscriptions = () => {
       setSubscriptions(prev => prev.filter(s => s._id !== id));
     } catch (err) {
       const message = err instanceof AxiosError 
-        ? err.response?.data?.message 
+        ? err.response?.data?.error 
         : err instanceof Error ? err.message : 'Failed to delete subscription';
       throw new Error(message || 'Failed to delete subscription', { cause: err });
     }
@@ -74,7 +74,7 @@ export const useSubscriptions = () => {
       return updatedSub;
     } catch (err) {
       const message = err instanceof AxiosError 
-        ? err.response?.data?.message 
+        ? err.response?.data?.error 
         : err instanceof Error ? err.message : 'Failed to toggle status';
       throw new Error(message || 'Failed to toggle status', { cause: err });
     }
