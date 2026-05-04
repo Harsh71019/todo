@@ -34,7 +34,7 @@ const TasksPage = () => {
   } = useTasks();
 
   const { tags: availableTags } = useTags();
-  const { focusTask, setFocusTask, startTimer } = useTimer();
+  const { focusTask, setFocusTask, startTimer, activeTask } = useTimer();
 
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
@@ -112,7 +112,18 @@ const TasksPage = () => {
               completed
             </p>
           </div>
-          <FloatingTimer />
+          {activeTask ? (
+            <FloatingTimer />
+          ) : (
+            <div className='text-right shrink-0'>
+              <p className='text-base font-semibold text-slate-700 dark:text-slate-200'>
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </p>
+              <p className='text-sm text-slate-400 dark:text-slate-500 mt-0.5'>
+                {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              </p>
+            </div>
+          )}
         </div>
       </header>
 
