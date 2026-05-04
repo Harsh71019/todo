@@ -1,7 +1,9 @@
+import { useState, useRef, useEffect } from 'react';
 import type { Task } from '../types/task';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useTimer } from '../context/TimerContext';
+import { format } from 'date-fns';
 
 interface TaskCardProps {
   task: Task;
@@ -35,6 +37,19 @@ const TaskCard = ({
   const isArchived = task.isArchived;
   const { activeTask, isActive } = useTimer();
   const isFocused = activeTask?._id === task._id;
+  
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const isOverdue = (() => {
     if (!task.dueDate || task.status !== 'pending') return false;
@@ -43,11 +58,17 @@ const TaskCard = ({
     return endOfDueDay < new Date();
   })();
 
+  const priorityColor = {
+    high: '#ef4444',   // red-500
+    medium: '#f59e0b', // amber-500
+    low: '#10b981'     // emerald-500
+  }[task.priority];
+
   const handleCardClick = (e: React.MouseEvent) => {
-    // Don't trigger if clicking buttons or checkboxes
     if (
       (e.target as HTMLElement).closest('button') ||
-      (e.target as HTMLElement).closest('input')
+      (e.target as HTMLElement).closest('input') ||
+      (e.target as HTMLElement).closest('.menu-container')
     ) {
       return;
     }
@@ -58,36 +79,7 @@ const TaskCard = ({
     const date = new Date(dateStr);
     const now = new Date();
     const sameYear = date.getFullYear() === now.getFullYear();
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      ...(!sameYear && { year: 'numeric' }),
-    });
-  };
-
-  const getRelativeTime = (dateStr: string) => {
-    const now = new Date();
-    const date = new Date(dateStr);
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${diffDays}d ago`;
-  };
-
-  const getTimeTaken = (startStr: string, endStr: string) => {
-    const start = new Date(startStr).getTime();
-    const end = new Date(endStr).getTime();
-    const diffMins = Math.floor((end - start) / 60000);
-
-    if (diffMins < 60) return `${diffMins}m`;
-    const hours = Math.floor(diffMins / 60);
-    const mins = diffMins % 60;
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+    return format(date, sameYear ? 'MMM d' : 'MMM d, yyyy');
   };
 
   const formatFocusTime = (seconds: number) => {
@@ -99,108 +91,179 @@ const TaskCard = ({
     return rem > 0 ? `${h}h ${rem}m` : `${h}h`;
   };
 
-  const completedSubtasksCount =
-    task.subtasks?.filter((st) => st.isCompleted).length || 0;
+  const completedSubtasksCount = task.subtasks?.filter((st) => st.isCompleted).length || 0;
   const totalSubtasksCount = task.subtasks?.length || 0;
-  const subtaskProgress =
-    totalSubtasksCount > 0
-      ? (completedSubtasksCount / totalSubtasksCount) * 100
-      : 0;
+  const subtaskProgress = totalSubtasksCount > 0 ? (completedSubtasksCount / totalSubtasksCount) * 100 : 0;
 
   return (
     <div
-      className={`group flex flex-col gap-3 sm:gap-4 border rounded-xl p-4 transition-all duration-200 hover:shadow-md cursor-pointer ${
+      className={`relative flex flex-col gap-3 sm:gap-4 border rounded-2xl p-4 transition-all duration-300 hover:shadow-lg cursor-pointer overflow-hidden ${
         isDeleted
           ? 'bg-red-50/50 border-red-100 opacity-80 dark:bg-red-900/10 dark:border-red-900/30'
           : isCompleted
-            ? 'opacity-60 bg-slate-50 border-slate-200 dark:bg-[#0a0a0a] dark:border-neutral-800'
+            ? 'opacity-60 bg-slate-50/50 border-slate-200 dark:bg-[#0a0a0a] dark:border-neutral-800'
             : isFocused
-              ? 'bg-white border-blue-400 dark:bg-black dark:border-blue-500 shadow-md shadow-blue-100 dark:shadow-blue-900/20'
+              ? 'bg-white border-blue-400 dark:bg-black dark:border-blue-500 shadow-xl shadow-blue-500/10'
               : 'bg-white border-slate-200 hover:border-blue-200 dark:bg-black dark:border-neutral-800 dark:hover:border-blue-500'
-      } ${isOverdue && !isDeleted ? 'border-l-4 border-l-red-500 dark:border-l-red-600' : ''}`}
+      }`}
       onClick={handleCardClick}
     >
-      <div className='flex items-start gap-3 sm:gap-4'>
+      {/* Left side accent border based on priority */}
+      {!isDeleted && (
+        <div 
+          className="absolute top-0 left-0 w-1.5 h-full transition-colors" 
+          style={{ backgroundColor: isCompleted ? '#cbd5e1' : priorityColor }}
+        />
+      )}
+
+      <div className="flex items-start gap-3 sm:gap-4 pl-2">
         {!isDeleted ? (
           <button
-            className={`shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded border-2 flex items-center justify-center mt-0.5 transition-colors ${
+            className={`shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center mt-0.5 transition-all ${
               isCompleted
                 ? 'bg-emerald-500 border-emerald-500 text-white'
-                : 'border-slate-300 bg-transparent hover:border-blue-500 dark:border-neutral-600 dark:hover:border-blue-500'
+                : 'border-slate-300 bg-white dark:bg-neutral-800 hover:border-blue-500 dark:border-neutral-600 dark:hover:border-blue-500 scale-100 active:scale-90'
             }`}
-            onClick={() => onToggle(task._id)}
-            aria-label={isCompleted ? 'Mark as pending' : 'Mark as completed'}
+            onClick={(e) => { e.stopPropagation(); onToggle(task._id); }}
           >
             {isCompleted && (
-              <svg
-                width='14'
-                height='14'
-                viewBox='0 0 12 12'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2.5'
-              >
-                <path
-                  d='M2 6l3 3 5-5'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                />
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="3">
+                <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             )}
           </button>
         ) : (
-          <div className='shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded border-2 border-red-300 bg-red-100 dark:border-red-900/50 dark:bg-red-900/20 flex items-center justify-center mt-0.5'>
-            <svg
-              width='12'
-              height='12'
-              viewBox='0 0 24 24'
-              fill='none'
-              stroke='currentColor'
-              className='text-red-500 dark:text-red-400'
-              strokeWidth='3'
-              strokeLinecap='round'
-              strokeLinejoin='round'
-            >
-              <line x1='18' y1='6' x2='6' y2='18'></line>
-              <line x1='6' y1='6' x2='18' y2='18'></line>
+          <div className="shrink-0 w-6 h-6 rounded-lg border-2 border-red-300 bg-red-100 dark:border-red-900/50 dark:bg-red-900/20 flex items-center justify-center mt-0.5">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-red-500 dark:text-red-400" strokeWidth="3">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </div>
         )}
 
-        <div className='flex-1 min-w-0'>
-          <div className='flex flex-wrap items-center gap-2 mb-1'>
-            <span
-              className={`text-[15px] sm:text-base font-medium break-words ${
-                isDeleted
-                  ? 'line-through text-red-800 dark:text-red-400'
-                  : isCompleted
-                    ? 'line-through text-slate-500 dark:text-slate-400'
-                    : 'text-slate-800 dark:text-slate-100'
-              }`}
-            >
-              {task.title}
-            </span>
-            <span
-              className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                task.priority === 'low'
-                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                  : task.priority === 'medium'
-                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-              }`}
-            >
-              {task.priority}
-            </span>
-            {task.isLongTerm && (
-              <span className='text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'>
-                24h+
-              </span>
-            )}
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <h3
+                className={`text-base font-bold truncate transition-all ${
+                  isDeleted
+                    ? 'line-through text-red-800 dark:text-red-400 opacity-50'
+                    : isCompleted
+                      ? 'line-through text-slate-400 dark:text-slate-500'
+                      : 'text-slate-900 dark:text-white'
+                }`}
+                title={task.title}
+              >
+                {task.title}
+              </h3>
+              {isOverdue && !isDeleted && !isCompleted && (
+                <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 animate-pulse">
+                  Overdue
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 menu-container">
+              {!isDeleted && !isCompleted && onFocusStart && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onFocusStart(task); }}
+                  className={`p-1.5 rounded-lg transition-colors ${isFocused ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-neutral-800'}`}
+                  title="Focus mode"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+                </button>
+              )}
+              
+              {!isDeleted && onEdit && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors"
+                  title="Edit task"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+              )}
+
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                </button>
+
+                {showMenu && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-xl shadow-2xl z-50 py-1 overflow-hidden animate-in fade-in zoom-in duration-200">
+                    {isDeleted ? (
+                      <>
+                        {onRestore && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onRestore(task._id); setShowMenu(false); }}
+                            className="w-full text-left px-4 py-2 text-xs font-bold text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-colors flex items-center gap-2"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                            Restore Task
+                          </button>
+                        )}
+                        {onPermanentDelete && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onPermanentDelete(task._id); setShowMenu(false); }}
+                            className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors flex items-center gap-2"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            Delete Forever
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {onDuplicate && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onDuplicate(task); setShowMenu(false); }}
+                            className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors flex items-center gap-2"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            Duplicate
+                          </button>
+                        )}
+                        {isArchived ? (
+                          onUnarchive && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onUnarchive(task._id); setShowMenu(false); }}
+                              className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800 transition-colors flex items-center gap-2"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                              Unarchive
+                            </button>
+                          )
+                        ) : (
+                          onArchive && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onArchive(task._id); setShowMenu(false); }}
+                              className="w-full text-left px-4 py-2 text-xs font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors flex items-center gap-2"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                              Archive
+                            </button>
+                          )
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onDelete(task._id); setShowMenu(false); }}
+                          className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors flex items-center gap-2"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                          Delete Task
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {task.description && (
             <div
-              className={`text-sm mb-2.5 break-words line-clamp-2 [&>p]:mb-1 [&>ul]:list-disc [&>ul]:ml-4 [&>ol]:list-decimal [&>ol]:ml-4 [&>a]:text-blue-600 dark:[&>a]:text-blue-400 [&>a]:underline [&>pre]:bg-slate-100 dark:[&>pre]:bg-neutral-800 [&>pre]:p-1 [&>pre]:rounded [&>code]:bg-slate-100 dark:[&>code]:bg-neutral-800 [&>code]:px-1 [&>code]:rounded ${isDeleted ? 'text-red-700/70 dark:text-red-400/70' : 'text-slate-600 dark:text-slate-300'}`}
+              className={`text-sm mb-3 break-words line-clamp-1 [&>p]:inline [&>ul]:hidden [&>ol]:hidden ${isDeleted ? 'text-red-700/50 dark:text-red-400/50' : 'text-slate-500 dark:text-slate-400'}`}
             >
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {task.description}
@@ -208,387 +271,56 @@ const TaskCard = ({
             </div>
           )}
 
-          {task.tags && task.tags.length > 0 && (
-            <div className='flex flex-wrap gap-1.5 mb-2.5'>
-              {task.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className='text-[10px] font-medium px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 border border-indigo-100/50 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800/50'
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <div className='flex flex-wrap items-center gap-x-4 gap-y-2 mt-2'>
-            {isFocused && (
-              <span className='flex items-center gap-1.5 text-xs font-medium text-red-500 dark:text-red-400'>
-                <span className='relative flex h-2 w-2'>
-                  {isActive && <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75' />}
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isActive ? 'bg-red-500' : 'bg-slate-300 dark:bg-neutral-600'}`} />
-                </span>
-                {isActive ? 'In focus' : 'Paused'}
-              </span>
-            )}
-            <span className='flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium'>
-              <svg
-                width='12'
-                height='12'
-                viewBox='0 0 12 12'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-              >
-                <circle cx='6' cy='6' r='5' />
-                <path d='M6 3v3l2 1' strokeLinecap='round' />
-              </svg>
-              {formatDate(task.createdAt)}
-              <span className='text-slate-300 dark:text-neutral-600'>·</span>
-              {getRelativeTime(task.createdAt)}
-            </span>
-
-            {task.dueDate && !isDeleted && (
-              <span
-                className={`flex items-center gap-1.5 text-xs font-medium ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}
-              >
-                <svg
-                  width='12'
-                  height='12'
-                  viewBox='0 0 12 12'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeWidth='2'
-                >
-                  <rect x='1.5' y='2' width='9' height='8' rx='1.5' />
-                  <path d='M1.5 5h9M4 1v2M8 1v2' strokeLinecap='round' />
-                </svg>
-                Due {formatDate(String(task.dueDate))}
-              </span>
-            )}
-
-            {task.estimatedMinutes !== undefined && task.estimatedMinutes > 0 && !isDeleted && (
-                <span className='flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400'>
-                  <svg
-                    width='12'
-                    height='12'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='2'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
+            {task.tags && task.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {task.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 dark:bg-neutral-800 dark:text-slate-400 border border-transparent hover:border-slate-200 dark:hover:border-neutral-700 transition-colors"
                   >
-                    <circle cx='12' cy='12' r='10'></circle>
-                    <polyline points='12 6 12 12 16 14'></polyline>
-                  </svg>
-                  Est. {task.estimatedMinutes}m
-                </span>
-              )}
-
-            {task.totalFocusSeconds > 0 && !isDeleted && (
-              <span className='flex items-center gap-1.5 text-xs font-medium text-violet-600 dark:text-violet-400'>
-                {task.completedPomodoros > 0 && <>🍅 {task.completedPomodoros} · </>}
-                {formatFocusTime(task.totalFocusSeconds)} focused
-              </span>
-            )}
-
-            {isCompleted && task.completedAt && !isDeleted && (
-              <span className='flex items-center gap-1.5 text-xs font-medium text-emerald-600'>
-                <svg
-                  width='12'
-                  height='12'
-                  viewBox='0 0 12 12'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeWidth='2'
-                >
-                  <path
-                    d='M2 6l3 3 5-5'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                  />
-                </svg>
-                Done {getRelativeTime(task.completedAt)} (Took{' '}
-                {getTimeTaken(task.createdAt, task.completedAt)})
-              </span>
-            )}
-
-            {isDeleted && task.deletedAt && (
-              <span className='flex items-center gap-1.5 text-xs font-medium text-red-600'>
-                <svg
-                  width='12'
-                  height='12'
-                  viewBox='0 0 24 24'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeWidth='2'
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                >
-                  <polyline points='3 6 5 6 21 6'></polyline>
-                  <path d='M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'></path>
-                </svg>
-                Deleted {getRelativeTime(task.deletedAt)}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className='flex items-center gap-2'>
-          {isDeleted ? (
-            <>
-              {onRestore && (
-                <button
-                  className='shrink-0 p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-all font-semibold text-xs flex items-center gap-1'
-                  onClick={() => onRestore(task._id)}
-                  aria-label='Restore task'
-                >
-                  <svg
-                    width='14'
-                    height='14'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='2.5'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                  >
-                    <polyline points='9 14 4 9 9 4'></polyline>
-                    <path d='M20 20v-7a4 4 0 0 0-4-4H4'></path>
-                  </svg>
-                  Restore
-                </button>
-              )}
-              {onPermanentDelete && (
-                <button
-                  className='shrink-0 p-1.5 text-red-600 hover:text-white hover:bg-red-600 rounded-md transition-all font-semibold text-xs flex items-center gap-1'
-                  onClick={() => onPermanentDelete(task._id)}
-                  aria-label='Delete forever'
-                >
-                  <svg
-                    width='14'
-                    height='14'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='2.5'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                  >
-                    <line x1='18' y1='6' x2='6' y2='18'></line>
-                    <line x1='6' y1='6' x2='18' y2='18'></line>
-                  </svg>
-                  Forever
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              {!isCompleted && !isArchived && onFocusStart && (
-                <button
-                  className='shrink-0 p-1.5 text-blue-500 hover:text-white hover:bg-blue-500 rounded-md transition-all border border-blue-200 hover:border-transparent opacity-0 group-hover:opacity-100 focus:opacity-100 hidden sm:flex items-center gap-1'
-                  onClick={() => onFocusStart(task)}
-                  aria-label='Focus mode'
-                  title='Focus Mode'
-                >
-                  <svg
-                    width='14'
-                    height='14'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='2.5'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                  >
-                    <circle cx='12' cy='12' r='10'></circle>
-                    <circle cx='12' cy='12' r='4'></circle>
-                  </svg>
-                  <span className='text-[10px] font-bold uppercase tracking-wider hidden md:inline'>
-                    Focus
+                    {tag}
                   </span>
-                </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="flex items-center gap-1">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                {formatDate(task.createdAt)}
+              </span>
+
+              {task.dueDate && !isDeleted && (
+                <span className={`flex items-center gap-1 ${isOverdue ? 'text-red-500' : ''}`}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  {formatDate(String(task.dueDate))}
+                </span>
               )}
 
-              {!isCompleted && !isArchived && onEdit && (
-                <button
-                  className='shrink-0 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md opacity-0 group-hover:opacity-100 transition-all focus:opacity-100'
-                  onClick={() => onEdit(task)}
-                  aria-label='Edit task'
-                >
-                  <svg
-                    width='16'
-                    height='16'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='2'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                  >
-                    <path d='M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7'></path>
-                    <path d='M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z'></path>
-                  </svg>
-                </button>
+              {task.totalFocusSeconds > 0 && !isDeleted && (
+                <span className="flex items-center gap-1 text-violet-500">
+                  {task.completedPomodoros > 0 && <span>🍅 {task.completedPomodoros}</span>}
+                  <span>{formatFocusTime(task.totalFocusSeconds)}</span>
+                </span>
               )}
-
-              {!isCompleted && !isArchived && onDuplicate && (
-                <button
-                  className='shrink-0 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md opacity-0 group-hover:opacity-100 transition-all focus:opacity-100'
-                  onClick={() => onDuplicate(task)}
-                  aria-label='Duplicate task'
-                  title='Duplicate Task'
-                >
-                  <svg
-                    width='16'
-                    height='16'
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='2'
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                  >
-                    <rect
-                      x='9'
-                      y='9'
-                      width='13'
-                      height='13'
-                      rx='2'
-                      ry='2'
-                    ></rect>
-                    <path d='M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'></path>
-                  </svg>
-                </button>
-              )}
-
-              {isArchived
-                ? onUnarchive && (
-                    <button
-                      className='shrink-0 p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md opacity-0 group-hover:opacity-100 transition-all focus:opacity-100'
-                      onClick={() => onUnarchive(task._id)}
-                      aria-label='Unarchive task'
-                      title='Unarchive Task'
-                    >
-                      <svg
-                        width='16'
-                        height='16'
-                        viewBox='0 0 24 24'
-                        fill='none'
-                        stroke='currentColor'
-                        strokeWidth='2'
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                      >
-                        <polyline points='21 8 21 21 3 21 3 8'></polyline>
-                        <rect x='1' y='3' width='22' height='5'></rect>
-                        <line x1='10' y1='12' x2='14' y2='12'></line>
-                      </svg>
-                    </button>
-                  )
-                : onArchive && (
-                    <button
-                      className='shrink-0 p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-md opacity-0 group-hover:opacity-100 transition-all focus:opacity-100'
-                      onClick={() => onArchive(task._id)}
-                      aria-label='Archive task'
-                      title='Archive Task'
-                    >
-                      <svg
-                        width='16'
-                        height='16'
-                        viewBox='0 0 24 24'
-                        fill='none'
-                        stroke='currentColor'
-                        strokeWidth='2'
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                      >
-                        <polyline points='21 8 21 21 3 21 3 8'></polyline>
-                        <rect x='1' y='3' width='22' height='5'></rect>
-                        <line x1='10' y1='12' x2='14' y2='12'></line>
-                      </svg>
-                    </button>
-                  )}
-
-              <button
-                className='shrink-0 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md opacity-0 group-hover:opacity-100 transition-all focus:opacity-100'
-                onClick={() => onDelete(task._id)}
-                aria-label='Delete task'
-              >
-                <svg
-                  width='16'
-                  height='16'
-                  viewBox='0 0 16 16'
-                  fill='none'
-                  stroke='currentColor'
-                  strokeWidth='2'
-                >
-                  <path d='M4 4l8 8M12 4l-8 8' strokeLinecap='round' />
-                </svg>
-              </button>
-            </>
-          )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Subtasks Section */}
+      {/* Simplified Subtasks Progress */}
       {totalSubtasksCount > 0 && (
-        <div className='ml-8 sm:ml-10 border-t border-slate-100 dark:border-neutral-800 pt-3'>
-          <div className='flex items-center gap-3 mb-2'>
-            <div className='flex-1 h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden'>
-              <div
-                className={`h-full transition-all duration-500 ${subtaskProgress === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                style={{ width: `${subtaskProgress}%` }}
-              />
-            </div>
-            <span className='text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0'>
-              {completedSubtasksCount} / {totalSubtasksCount}
-            </span>
+        <div className="ml-10 pt-2 flex items-center gap-3">
+          <div className="flex-1 h-1 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-700 ${subtaskProgress === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+              style={{ width: `${subtaskProgress}%` }}
+            />
           </div>
-
-          <div className='flex flex-col gap-2 mt-2'>
-            {task.subtasks.map((st, idx) => (
-              <label
-                key={st._id || idx}
-                className={`flex items-start gap-2 cursor-pointer group/st ${st.isCompleted ? 'opacity-50' : ''}`}
-              >
-                <div className='relative flex items-center justify-center mt-0.5'>
-                  <input
-                    type='checkbox'
-                    className='peer appearance-none w-3.5 h-3.5 border-2 border-slate-300 dark:border-neutral-600 rounded-sm checked:bg-blue-500 checked:border-blue-500 dark:checked:border-blue-500 cursor-pointer transition-all'
-                    checked={st.isCompleted}
-                    onChange={() =>
-                      onToggleSubtask && onToggleSubtask(task._id, idx)
-                    }
-                    disabled={!onToggleSubtask || isCompleted}
-                  />
-                  <svg
-                    className='absolute w-2.5 h-2.5 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity'
-                    viewBox='0 0 12 12'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='3'
-                  >
-                    <path
-                      d='M2 6l3 3 5-5'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                    />
-                  </svg>
-                </div>
-                <span
-                  className={`text-sm select-none transition-colors ${
-                    st.isCompleted
-                      ? 'line-through text-slate-400 dark:text-slate-500'
-                      : 'text-slate-600 dark:text-slate-300 group-hover/st:text-slate-900 dark:group-hover/st:text-slate-100'
-                  }`}
-                >
-                  {st.title}
-                </span>
-              </label>
-            ))}
-          </div>
+          <span className="text-[9px] font-black text-slate-400 tracking-tighter shrink-0">
+            {completedSubtasksCount}/{totalSubtasksCount}
+          </span>
         </div>
       )}
     </div>
