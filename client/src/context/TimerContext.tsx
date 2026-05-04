@@ -204,6 +204,7 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTimer = () => {
   const ctx = useContext(TimerContext);
   if (!ctx) throw new Error('useTimer must be used within TimerProvider');

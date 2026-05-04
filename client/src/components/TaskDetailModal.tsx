@@ -37,7 +37,6 @@ const TaskDetailModal = ({
   onToggle,
   onToggleSubtask,
   onDelete,
-  onArchive,
   onEdit
 }: TaskDetailModalProps) => {
   const { activeTask, timeLeft, isActive, phase, pomodoroCount, startTimer, pauseTimer, resumeTimer, resetTimer, completeTimer, skipBreak } = useTimer();

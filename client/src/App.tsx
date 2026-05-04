@@ -11,6 +11,7 @@ import TagsPage from './pages/TagsPage';
 import ArchivePage from './pages/ArchivePage';
 import CompletedPage from './pages/CompletedPage';
 import TrashPage from './pages/TrashPage';
+import SubscriptionsPage from './pages/SubscriptionsPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 
@@ -57,6 +58,7 @@ function AppLayout({ isDarkMode, toggleDarkMode }: { isDarkMode: boolean; toggle
               <Route path="/tags" element={<TagsPage />} />
               <Route path="/archive" element={<ArchivePage />} />
               <Route path="/completed" element={<CompletedPage />} />
+              <Route path="/subscriptions" element={<SubscriptionsPage />} />
               <Route path="/trash" element={<TrashPage />} />
             </Routes>
           </ErrorBoundary>
