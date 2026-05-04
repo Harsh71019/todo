@@ -406,7 +406,7 @@ const DashboardPage = () => {
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
                     <Tooltip
                       contentStyle={{ backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                      formatter={(v: number, name: string) => [name === 'minutes' ? `${v}m` : v, name === 'minutes' ? 'Focus time' : 'Pomodoros']}
+                      formatter={(v: unknown, name: unknown) => { const n = name as string; const val = v as number; return [n === 'minutes' ? `${val}m` : val, n === 'minutes' ? 'Focus time' : 'Pomodoros']; }}
                     />
                     <Bar dataKey='minutes' name='Focus time' fill='#8b5cf6' radius={[4, 4, 0, 0]} />
                   </BarChart>

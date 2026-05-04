@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Types } from 'mongoose';
 
 export const TaskPriority = {
   LOW: 'low',
@@ -22,7 +23,7 @@ export interface ISubtask {
 
 export interface ITask {
   _id: string;
-  userId: string;
+  userId: Types.ObjectId;
   title: string;
   description?: string;
   priority: TaskPriorityType;
