@@ -33,10 +33,12 @@ const TaskCard = ({
   const isDeleted = task.isDeleted;
   const isArchived = task.isArchived;
 
-  const isOverdue =
-    task.dueDate &&
-    task.status === 'pending' &&
-    new Date(task.dueDate) < new Date();
+  const isOverdue = (() => {
+    if (!task.dueDate || task.status !== 'pending') return false;
+    const endOfDueDay = new Date(task.dueDate);
+    endOfDueDay.setHours(23, 59, 59, 999);
+    return endOfDueDay < new Date();
+  })();
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't trigger if clicking buttons or checkboxes
@@ -46,7 +48,7 @@ const TaskCard = ({
     ) {
       return;
     }
-    onFocusStart?.(task);
+    if (!isCompleted && !isDeleted) onFocusStart?.(task);
   };
 
   const formatDate = (dateStr: string) => {
@@ -239,7 +241,7 @@ const TaskCard = ({
             )}
 
             {task.estimatedMinutes !== undefined && task.estimatedMinutes > 0 && !isDeleted && (
-                <span className='flex items-center gap-1.5 text-xs font-medium text-slate-500'>
+                <span className='flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400'>
                   <svg
                     width='12'
                     height='12'
@@ -349,7 +351,7 @@ const TaskCard = ({
             </>
           ) : (
             <>
-              {!isCompleted && onFocusStart && (
+              {!isCompleted && !isArchived && onFocusStart && (
                 <button
                   className='shrink-0 p-1.5 text-blue-500 hover:text-white hover:bg-blue-500 rounded-md transition-all border border-blue-200 hover:border-transparent opacity-0 group-hover:opacity-100 focus:opacity-100 hidden sm:flex items-center gap-1'
                   onClick={() => onFocusStart(task)}
@@ -375,7 +377,7 @@ const TaskCard = ({
                 </button>
               )}
 
-              {!isCompleted && onEdit && (
+              {!isCompleted && !isArchived && onEdit && (
                 <button
                   className='shrink-0 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md opacity-0 group-hover:opacity-100 transition-all focus:opacity-100'
                   onClick={() => onEdit(task)}
@@ -397,7 +399,7 @@ const TaskCard = ({
                 </button>
               )}
 
-              {!isCompleted && onDuplicate && (
+              {!isCompleted && !isArchived && onDuplicate && (
                 <button
                   className='shrink-0 p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md opacity-0 group-hover:opacity-100 transition-all focus:opacity-100'
                   onClick={() => onDuplicate(task)}
