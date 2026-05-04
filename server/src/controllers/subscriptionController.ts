@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
-import { Subscription } from '../models/Subscription';
-import { subscriptionSchema } from '../types/subscription';
+import { Subscription } from '../models/Subscription.js';
+import { subscriptionSchema } from '../types/subscription.js';
 
 export const getSubscriptions = async (req: Request, res: Response) => {
   try {
