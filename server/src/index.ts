@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 dotenvConfig({ path: path.join(__dirname, '../.env') });
 
 import express from 'express';
+import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
@@ -39,6 +40,10 @@ for (const key of REQUIRED_ENV) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+app.use(helmet({
+  // Allow the SPA to load in the same Express origin without CSP blocking
+  contentSecurityPolicy: process.env.NODE_ENV === 'production',
+}));
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true,
