@@ -1,12 +1,25 @@
-import { auth } from '../lib/auth.js';
-import { fromNodeHeaders } from 'better-auth/node';
+import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 
-export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
-  const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
-  if (!session) {
+declare global {
+  namespace Express {
+    interface Request {
+      userId?: string;
+    }
+  }
+}
+
+export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+  const token = req.cookies?.auth_token;
+  if (!token) {
     res.status(401).json({ success: false, error: 'Unauthorized' });
     return;
   }
-  next();
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+    req.userId = payload.userId;
+    next();
+  } catch {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
 };

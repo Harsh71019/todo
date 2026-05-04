@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { authClient } from '../lib/authClient';
+import { login } from '../services/authApi';
 import toast from 'react-hot-toast';
 
 const LoginPage = () => {
@@ -12,13 +12,14 @@ const LoginPage = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await authClient.signIn.email({ email, password });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message ?? 'Invalid email or password');
-      return;
+    try {
+      await login(email, password);
+      navigate('/tasks', { replace: true });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? 'Invalid email or password');
+    } finally {
+      setLoading(false);
     }
-    navigate('/tasks', { replace: true });
   };
 
   return (

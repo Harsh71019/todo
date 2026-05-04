@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import * as taskApi from '../services/taskApi';
-import { authClient } from '../lib/authClient';
+import { logout } from '../services/authApi';
 import toast from 'react-hot-toast';
 
 interface SidebarProps {
@@ -347,7 +347,7 @@ const Sidebar = ({
         </button>
         <button
           onClick={async () => {
-            await authClient.signOut();
+            await logout();
             navigate('/login', { replace: true });
           }}
           className='flex items-center gap-2 text-sm text-slate-600 hover:text-red-600 font-medium p-2 rounded-lg hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-colors'

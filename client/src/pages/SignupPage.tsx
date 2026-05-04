@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { authClient } from '../lib/authClient';
+import { signup } from '../services/authApi';
 import toast from 'react-hot-toast';
 
 const SignupPage = () => {
@@ -17,13 +17,14 @@ const SignupPage = () => {
       return;
     }
     setLoading(true);
-    const { error } = await authClient.signUp.email({ name, email, password });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message ?? 'Failed to create account');
-      return;
+    try {
+      await signup(name, email, password);
+      navigate('/tasks', { replace: true });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? 'Failed to create account');
+    } finally {
+      setLoading(false);
     }
-    navigate('/tasks', { replace: true });
   };
 
   return (

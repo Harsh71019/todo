@@ -1,8 +1,8 @@
 import { Navigate } from 'react-router-dom';
-import { authClient } from '../lib/authClient';
+import { useAuth } from '../hooks/useAuth';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { data: session, isPending } = authClient.useSession();
+  const { user, isPending } = useAuth();
 
   if (isPending) {
     return (
@@ -12,7 +12,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  if (!session) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
