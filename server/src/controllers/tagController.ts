@@ -1,32 +1,28 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
+import mongoose from 'mongoose';
 import Tag from '../models/Tag.js';
 import Task from '../models/Task.js';
 import { createTagSchema, updateTagSchema } from '../types/tag.js';
 
 // GET /api/tags — List all tags with task usage count
 export const getAllTags = async (
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const tags = await Tag.find().sort({ name: 1 }).lean();
+    const tags = await Tag.find({ userId: req.userId }).sort({ name: 1 }).lean();
 
-    // Aggregate task counts per tag name
     const taskCounts = await Task.aggregate([
-      { $match: { isDeleted: false } },
+      { $match: { userId: new mongoose.Types.ObjectId(req.userId!), isDeleted: false } },
       { $unwind: '$tags' },
       {
         $group: {
           _id: '$tags',
           total: { $sum: 1 },
-          completed: {
-            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] },
-          },
-          pending: {
-            $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] },
-          },
+          completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+          pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
         },
       },
     ]);
@@ -60,13 +56,7 @@ export const createTag = async (
   try {
     const validated = createTagSchema.parse(req.body);
 
-    const existing = await Tag.findOne({ name: validated.name });
-    if (existing) {
-      res.status(409).json({ success: false, error: `Tag "${validated.name}" already exists` });
-      return;
-    }
-
-    const tag = await Tag.create(validated);
+    const tag = await Tag.create({ ...validated, userId: req.userId });
     res.status(201).json({ success: true, data: tag });
   } catch (error) {
     if (error instanceof ZodError) {
@@ -75,6 +65,11 @@ export const createTag = async (
         error: 'Validation failed',
         details: error.issues.map((e) => ({ field: String(e.path.join('.')), message: e.message })),
       });
+      return;
+    }
+    // Duplicate key — tag name already exists for this user
+    if ((error as any).code === 11000) {
+      res.status(409).json({ success: false, error: `Tag "${req.body.name}" already exists` });
       return;
     }
     next(error);
@@ -90,7 +85,7 @@ export const updateTag = async (
   try {
     const validated = updateTagSchema.parse(req.body);
 
-    const tag = await Tag.findById(req.params.id);
+    const tag = await Tag.findOne({ _id: req.params.id, userId: req.userId });
     if (!tag) {
       res.status(404).json({ success: false, error: 'Tag not found' });
       return;
@@ -98,24 +93,26 @@ export const updateTag = async (
 
     const oldName = tag.name;
 
-    // If renaming, check uniqueness and cascade to tasks
     if (validated.name && validated.name !== oldName) {
-      const conflict = await Tag.findOne({ name: validated.name });
-      if (conflict) {
-        res.status(409).json({ success: false, error: `Tag "${validated.name}" already exists` });
-        return;
+      // Use a session+transaction so the cascade and rename are atomic
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          await Task.updateMany(
+            { tags: oldName, userId: req.userId },
+            { $set: { 'tags.$[elem]': validated.name } },
+            { arrayFilters: [{ elem: oldName }], session },
+          );
+          Object.assign(tag, validated);
+          await tag.save({ session });
+        });
+      } finally {
+        await session.endSession();
       }
-
-      // Atomically rename the tag on all tasks that have it
-      await Task.updateMany(
-        { tags: oldName },
-        { $set: { 'tags.$[elem]': validated.name } },
-        { arrayFilters: [{ elem: oldName }] },
-      );
+    } else {
+      Object.assign(tag, validated);
+      await tag.save();
     }
-
-    Object.assign(tag, validated);
-    await tag.save();
 
     res.json({ success: true, data: tag });
   } catch (error) {
@@ -125,6 +122,10 @@ export const updateTag = async (
         error: 'Validation failed',
         details: error.issues.map((e) => ({ field: String(e.path.join('.')), message: e.message })),
       });
+      return;
+    }
+    if ((error as any).code === 11000) {
+      res.status(409).json({ success: false, error: `Tag "${req.body.name}" already exists` });
       return;
     }
     next(error);
@@ -138,19 +139,31 @@ export const deleteTag = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const tag = await Tag.findById(req.params.id);
+    const tag = await Tag.findOne({ _id: req.params.id, userId: req.userId });
     if (!tag) {
       res.status(404).json({ success: false, error: 'Tag not found' });
       return;
     }
 
-    // Remove this tag from all tasks atomically
-    const result = await Task.updateMany({ tags: tag.name }, { $pull: { tags: tag.name } });
-    await Tag.findByIdAndDelete(req.params.id);
+    const session = await mongoose.startSession();
+    let modifiedCount = 0;
+    try {
+      await session.withTransaction(async () => {
+        const result = await Task.updateMany(
+          { tags: tag.name, userId: req.userId },
+          { $pull: { tags: tag.name } },
+          { session },
+        );
+        modifiedCount = result.modifiedCount;
+        await Tag.findByIdAndDelete(req.params.id, { session });
+      });
+    } finally {
+      await session.endSession();
+    }
 
     res.json({
       success: true,
-      message: `Tag "${tag.name}" deleted and removed from ${result.modifiedCount} task(s)`,
+      message: `Tag "${tag.name}" deleted and removed from ${modifiedCount} task(s)`,
     });
   } catch (error) {
     next(error);

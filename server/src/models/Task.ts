@@ -5,6 +5,11 @@ export interface ITaskDocument extends Omit<ITask, '_id'>, Document {}
 
 const taskSchema = new Schema<ITaskDocument>(
   {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'User ID is required'],
+    },
     title: {
       type: String,
       required: [true, 'Title is required'],
@@ -92,14 +97,14 @@ const taskSchema = new Schema<ITaskDocument>(
 );
 
 // Indexes for efficient queries
-taskSchema.index({ isDeleted: 1, status: 1 }); // Great for active vs completed filters
-taskSchema.index({ isDeleted: 1, createdAt: -1 }); // Great for recent active tasks
-taskSchema.index({ isArchived: 1 });
-taskSchema.index({ status: 1 });
-taskSchema.index({ createdAt: -1 });
-taskSchema.index({ completedAt: -1 });
-taskSchema.index({ priority: 1 });
-taskSchema.index({ tags: 1 });
+taskSchema.index({ userId: 1, isDeleted: 1, status: 1 });
+taskSchema.index({ userId: 1, isDeleted: 1, createdAt: -1 });
+taskSchema.index({ userId: 1, isArchived: 1 });
+taskSchema.index({ userId: 1, createdAt: -1 });
+taskSchema.index({ userId: 1, completedAt: -1 });
+taskSchema.index({ userId: 1, priority: 1 });
+taskSchema.index({ userId: 1, tags: 1 });
+taskSchema.index({ userId: 1, title: 1 }); // prefix-match support for search
 
 const Task = mongoose.model<ITaskDocument>('Task', taskSchema);
 

@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IFocusSession extends Document {
+  userId: mongoose.Types.ObjectId;
   taskId: mongoose.Types.ObjectId;
   startedAt: Date;
   endedAt?: Date;
@@ -13,6 +14,7 @@ export interface IFocusSession extends Document {
 
 const focusSessionSchema = new Schema<IFocusSession>(
   {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     taskId: { type: Schema.Types.ObjectId, ref: 'Task', required: true },
     startedAt: { type: Date, required: true, default: Date.now },
     endedAt: { type: Date },
@@ -23,8 +25,8 @@ const focusSessionSchema = new Schema<IFocusSession>(
   { timestamps: true },
 );
 
-focusSessionSchema.index({ taskId: 1, startedAt: -1 });
-focusSessionSchema.index({ status: 1 });
-focusSessionSchema.index({ startedAt: -1 });
+focusSessionSchema.index({ userId: 1, taskId: 1, startedAt: -1 });
+focusSessionSchema.index({ userId: 1, status: 1 });
+focusSessionSchema.index({ userId: 1, startedAt: -1 });
 
 export default mongoose.model<IFocusSession>('FocusSession', focusSessionSchema);

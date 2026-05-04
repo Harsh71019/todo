@@ -4,12 +4,19 @@ import Tag from '../models/Tag.js';
 import { createTaskSchema, updateTaskSchema } from '../types/task.js';
 import { ZodError } from 'zod';
 
-// GET /api/tasks — List all tasks with optional filters
+// GET /api/tasks — List all tasks with optional filters and pagination
 export const getAllTasks = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { status, priority, sort = '-createdAt', search, tag, view = 'active' } = req.query;
+    const {
+      status, priority, sort = '-createdAt', search, tag, view = 'active',
+      page = '1', limit = '100',
+    } = req.query;
 
-    const filter: Record<string, unknown> = {};
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(200, Math.max(1, parseInt(limit as string, 10) || 100));
+    const skip = (pageNum - 1) * limitNum;
+
+    const filter: Record<string, unknown> = { userId: req.userId };
 
     // View Filtering Logic
     const startOfToday = new Date();
@@ -22,23 +29,19 @@ export const getAllTasks = async (req: Request, res: Response, next: NextFunctio
       filter.status = 'completed';
     } else if (view === 'archive') {
       filter.isDeleted = false;
-      // Archive view now only shows tasks explicitly moved there
       filter.isArchived = true;
     } else {
       // view === 'active'
       filter.isDeleted = false;
-      filter.isArchived = { $ne: true }; // Don't show archived in active
-      
-      // Active shows:
-      // 1. Pending tasks (created anytime)
-      // 2. Tasks completed today
+      filter.isArchived = { $ne: true };
       filter.$or = [
         { status: 'pending' },
-        { completedAt: { $gte: startOfToday } }
+        { completedAt: { $gte: startOfToday } },
       ];
     }
 
-    if (status && (status === 'pending' || status === 'completed')) {
+    // Only apply status filter when it won't conflict with the active-view $or
+    if (status && (status === 'pending' || status === 'completed') && view !== 'active') {
       filter.status = status;
     }
     if (priority && ['low', 'medium', 'high'].includes(priority as string)) {
@@ -48,12 +51,27 @@ export const getAllTasks = async (req: Request, res: Response, next: NextFunctio
       filter.tags = tag;
     }
     if (search && typeof search === 'string') {
-      filter.title = { $regex: search, $options: 'i' };
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = { $regex: escaped, $options: 'i' };
+      filter.$and = [
+        ...(Array.isArray(filter.$and) ? filter.$and : []),
+        { $or: [{ title: re }, { description: re }] },
+      ];
     }
 
-    const tasks = await Task.find(filter).sort(sort as string).lean();
+    const [tasks, total] = await Promise.all([
+      Task.find(filter).sort(sort as string).skip(skip).limit(limitNum).lean(),
+      Task.countDocuments(filter),
+    ]);
 
-    res.json({ success: true, count: tasks.length, data: tasks });
+    res.json({
+      success: true,
+      count: tasks.length,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      data: tasks,
+    });
   } catch (error) {
     next(error);
   }
@@ -64,15 +82,18 @@ export const createTask = async (req: Request, res: Response, next: NextFunction
   try {
     const validated = createTaskSchema.parse(req.body);
 
-    // Inject default tags (deduplicated, respect max-5 limit)
-    const defaultTags = await Tag.find({ isDefault: true }).select('name').lean();
+    // Inject default tags scoped to this user (deduplicated, respect max-5 limit)
+    const defaultTags = await Tag.find({ userId: req.userId, isDefault: true }).select('name').lean();
     const defaultTagNames = defaultTags.map((t) => t.name);
-    const mergedTags = Array.from(
-      new Set([...(validated.tags || []), ...defaultTagNames]),
-    ).slice(0, 5);
+    const userTags = validated.tags || [];
+    // Only inject defaults that fit without dropping user tags
+    const mergedTags = userTags.length >= 5
+      ? userTags
+      : Array.from(new Set([...userTags, ...defaultTagNames])).slice(0, 5);
 
     const task = await Task.create({
       ...validated,
+      userId: req.userId,
       tags: mergedTags,
       dueDate: validated.dueDate ? new Date(validated.dueDate) : undefined,
     });
@@ -96,7 +117,6 @@ export const updateTask = async (req: Request, res: Response, next: NextFunction
   try {
     const validated = updateTaskSchema.parse(req.body);
 
-    // If status is being changed to 'completed', set completedAt
     const updateData: Record<string, unknown> = { ...validated };
     if (validated.status === 'completed') {
       updateData.completedAt = new Date();
@@ -104,15 +124,16 @@ export const updateTask = async (req: Request, res: Response, next: NextFunction
       updateData.completedAt = null;
     }
 
-    // Handle dueDate conversion
     if (validated.dueDate !== undefined) {
       updateData.dueDate = validated.dueDate ? new Date(validated.dueDate) : null;
     }
 
-    const task = await Task.findByIdAndUpdate(req.params.id, updateData, {
-      new: true,
-      runValidators: true,
-    }).lean();
+    // Only update tasks belonging to this user that are not deleted
+    const task = await Task.findOneAndUpdate(
+      { _id: req.params.id, userId: req.userId, isDeleted: false },
+      updateData,
+      { new: true, runValidators: true },
+    ).lean();
 
     if (!task) {
       res.status(404).json({ success: false, error: 'Task not found' });
@@ -136,10 +157,10 @@ export const updateTask = async (req: Request, res: Response, next: NextFunction
 // DELETE /api/tasks/:id — Soft delete a task (move to trash)
 export const deleteTask = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const task = await Task.findByIdAndUpdate(
-      req.params.id,
+    const task = await Task.findOneAndUpdate(
+      { _id: req.params.id, userId: req.userId, isDeleted: false },
       { isDeleted: true, deletedAt: new Date() },
-      { new: true }
+      { new: true },
     );
 
     if (!task) {
@@ -153,10 +174,30 @@ export const deleteTask = async (req: Request, res: Response, next: NextFunction
   }
 };
 
+// PATCH /api/tasks/:id/restore — Restore a soft-deleted task
+export const restoreTask = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const task = await Task.findOneAndUpdate(
+      { _id: req.params.id, userId: req.userId, isDeleted: true },
+      { isDeleted: false, deletedAt: null },
+      { new: true },
+    );
+
+    if (!task) {
+      res.status(404).json({ success: false, error: 'Task not found in trash' });
+      return;
+    }
+
+    res.json({ success: true, data: task });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // DELETE /api/tasks/:id/permanent — Permanently delete a task
 export const permanentlyDeleteTask = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const task = await Task.findByIdAndDelete(req.params.id);
+    const task = await Task.findOneAndDelete({ _id: req.params.id, userId: req.userId });
 
     if (!task) {
       res.status(404).json({ success: false, error: 'Task not found' });
@@ -172,10 +213,10 @@ export const permanentlyDeleteTask = async (req: Request, res: Response, next: N
 // PATCH /api/tasks/:id/archive — Move a task to archive
 export const archiveTask = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const task = await Task.findByIdAndUpdate(
-      req.params.id,
+    const task = await Task.findOneAndUpdate(
+      { _id: req.params.id, userId: req.userId, isDeleted: false },
       { isArchived: true },
-      { new: true }
+      { new: true },
     );
 
     if (!task) {
@@ -192,10 +233,10 @@ export const archiveTask = async (req: Request, res: Response, next: NextFunctio
 // PATCH /api/tasks/:id/unarchive — Restore a task from archive
 export const unarchiveTask = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const task = await Task.findByIdAndUpdate(
-      req.params.id,
+    const task = await Task.findOneAndUpdate(
+      { _id: req.params.id, userId: req.userId, isDeleted: false },
       { isArchived: false },
-      { new: true }
+      { new: true },
     );
 
     if (!task) {

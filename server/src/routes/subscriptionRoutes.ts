@@ -5,8 +5,8 @@ import {
   updateSubscription,
   deleteSubscription,
   toggleActive,
-} from '../controllers/subscriptionController';
-import { requireAuth } from '../middleware/requireAuth';
+} from '../controllers/subscriptionController.js';
+import { requireAuth } from '../middleware/requireAuth.js';
 
 const router = Router();
 

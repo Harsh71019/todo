@@ -32,6 +32,8 @@ export const getTasks = async (params?: {
   search?: string;
   tag?: string;
   view?: string;
+  page?: number;
+  limit?: number;
 }): Promise<Task[]> => {
   const { data } = await api.get<ApiResponse<Task[]>>('/tasks', { params });
   return data.data;
@@ -65,20 +67,29 @@ export const permanentlyDeleteTask = async (id: string): Promise<void> => {
   await api.delete(`/tasks/${id}/permanent`);
 };
 
+export const restoreTask = async (id: string): Promise<Task> => {
+  const { data } = await api.patch<ApiResponse<Task>>(`/tasks/${id}/restore`);
+  return data.data;
+};
+
 // ─── Stats ───────────────────────────────────────────────
 
+// Browser timezone sent automatically on every stats request
+const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const tzParams = { tz };
+
 export const getStatsOverview = async (): Promise<StatsOverview> => {
-  const { data } = await api.get<ApiResponse<StatsOverview>>('/stats/overview');
+  const { data } = await api.get<ApiResponse<StatsOverview>>('/stats/overview', { params: tzParams });
   return data.data;
 };
 
 export const getWeeklyActivity = async (): Promise<WeeklyActivity[]> => {
-  const { data } = await api.get<ApiResponse<WeeklyActivity[]>>('/stats/weekly');
+  const { data } = await api.get<ApiResponse<WeeklyActivity[]>>('/stats/weekly', { params: tzParams });
   return data.data;
 };
 
 export const getMonthlyTrend = async (): Promise<MonthlyTrend[]> => {
-  const { data } = await api.get<ApiResponse<MonthlyTrend[]>>('/stats/monthly');
+  const { data } = await api.get<ApiResponse<MonthlyTrend[]>>('/stats/monthly', { params: tzParams });
   return data.data;
 };
 
@@ -88,36 +99,36 @@ export const getPriorityBreakdown = async (): Promise<PriorityBreakdown[]> => {
 };
 
 export const getTagsBreakdown = async (): Promise<TagBreakdown[]> => {
-  const response = await api.get('/stats/tags');
-  return response.data.data;
+  const { data } = await api.get('/stats/tags');
+  return data.data;
 };
 
 export const getDayOfWeekStats = async (): Promise<DayOfWeekStats[]> => {
-  const response = await api.get('/stats/day-of-week');
-  return response.data.data;
+  const { data } = await api.get('/stats/day-of-week', { params: tzParams });
+  return data.data;
 };
 
 export const getVelocityStats = async (): Promise<VelocityStats[]> => {
-  const response = await api.get('/stats/velocity');
-  return response.data.data;
+  const { data } = await api.get('/stats/velocity');
+  return data.data;
 };
 
 export const getHeatmapStats = async (): Promise<HeatmapData[]> => {
-  const response = await api.get('/stats/heatmap');
-  return response.data.data;
+  const { data } = await api.get('/stats/heatmap', { params: tzParams });
+  return data.data;
 };
 
 export const getTimeOfDayStats = async (): Promise<TimeOfDayStats[]> => {
-  const response = await api.get('/stats/time-of-day');
-  return response.data.data;
+  const { data } = await api.get('/stats/time-of-day', { params: tzParams });
+  return data.data;
 };
 
 export const getFocusDriftStats = async (): Promise<FocusDriftStats[]> => {
-  const response = await api.get('/stats/focus-drift');
-  return response.data.data;
+  const { data } = await api.get('/stats/focus-drift');
+  return data.data;
 };
 
 export const getTagEfficiencyStats = async (): Promise<TagEfficiencyStats[]> => {
-  const response = await api.get('/stats/tag-efficiency');
-  return response.data.data;
+  const { data } = await api.get('/stats/tag-efficiency');
+  return data.data;
 };

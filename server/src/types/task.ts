@@ -22,6 +22,7 @@ export interface ISubtask {
 
 export interface ITask {
   _id: string;
+  userId: string;
   title: string;
   description?: string;
   priority: TaskPriorityType;
@@ -76,7 +77,6 @@ export const updateTaskSchema = z.object({
     .max(20)
     .optional(),
   isLongTerm: z.boolean().optional(),
-  isDeleted: z.boolean().optional(),
   dueDate: z.string().datetime().nullable().optional(),
 });
 

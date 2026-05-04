@@ -49,8 +49,6 @@ export interface UpdateTaskPayload {
   estimatedMinutes?: number;
   subtasks?: Subtask[];
   isLongTerm?: boolean;
-  isDeleted?: boolean;
-  isArchived?: boolean;
   dueDate?: string | null;
 }
 
@@ -59,6 +57,9 @@ export interface ApiResponse<T> {
   success: boolean;
   data: T;
   count?: number;
+  total?: number;
+  page?: number;
+  totalPages?: number;
   error?: string;
 }
 

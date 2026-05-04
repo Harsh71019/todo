@@ -17,9 +17,8 @@ export const stopSession = async (sessionId: string, status: 'completed' | 'aban
 };
 
 export const getActiveSession = async (): Promise<ActiveSession | null> => {
-  const res = await api.get('/active');
-  if (res.status === 204) return null;
-  return res.data.data;
+  const { data } = await api.get('/active');
+  return data.data ?? null;
 };
 
 export const getSessionsByTask = async (taskId: string): Promise<FocusSession[]> => {
@@ -27,13 +26,15 @@ export const getSessionsByTask = async (taskId: string): Promise<FocusSession[]>
   return data.data;
 };
 
+const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 export const getFocusToday = async (): Promise<FocusTodayStats> => {
-  const { data } = await api.get('/stats/today');
+  const { data } = await api.get('/stats/today', { params: { tz } });
   return data.data;
 };
 
 export const getFocusWeekly = async (): Promise<FocusWeeklyStat[]> => {
-  const { data } = await api.get('/stats/weekly');
+  const { data } = await api.get('/stats/weekly', { params: { tz } });
   return data.data;
 };
 
