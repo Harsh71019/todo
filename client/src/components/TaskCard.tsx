@@ -25,7 +25,6 @@ const TaskCard = ({
   onDelete,
   onEdit,
   onDuplicate,
-  onToggleSubtask,
   onFocusStart,
   onRestore,
   onPermanentDelete,
@@ -35,7 +34,7 @@ const TaskCard = ({
   const isCompleted = task.status === 'completed';
   const isDeleted = task.isDeleted;
   const isArchived = task.isArchived;
-  const { activeTask, isActive } = useTimer();
+  const { activeTask } = useTimer();
   const isFocused = activeTask?._id === task._id;
   
   const [showMenu, setShowMenu] = useState(false);

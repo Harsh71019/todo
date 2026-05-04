@@ -1,8 +1,8 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface ITag {
   _id: string;
-  userId: string;
+  userId: Types.ObjectId;
   name: string;
   color: string;
   isDefault: boolean;
