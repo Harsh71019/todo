@@ -45,7 +45,11 @@ export const getAllTasks = async (req: Request, res: Response, next: NextFunctio
     }
     if (search && typeof search === 'string') {
       const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      filter.title = { $regex: escaped, $options: 'i' };
+      const re = { $regex: escaped, $options: 'i' };
+      filter.$and = [
+        ...(Array.isArray(filter.$and) ? filter.$and : []),
+        { $or: [{ title: re }, { description: re }] },
+      ];
     }
 
     const tasks = await Task.find(filter).sort(sort as string).lean();

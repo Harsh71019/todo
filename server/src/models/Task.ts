@@ -104,6 +104,7 @@ taskSchema.index({ userId: 1, createdAt: -1 });
 taskSchema.index({ userId: 1, completedAt: -1 });
 taskSchema.index({ userId: 1, priority: 1 });
 taskSchema.index({ userId: 1, tags: 1 });
+taskSchema.index({ userId: 1, title: 1 }); // prefix-match support for search
 
 const Task = mongoose.model<ITaskDocument>('Task', taskSchema);
 
