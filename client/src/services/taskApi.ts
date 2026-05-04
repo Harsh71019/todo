@@ -32,6 +32,8 @@ export const getTasks = async (params?: {
   search?: string;
   tag?: string;
   view?: string;
+  page?: number;
+  limit?: number;
 }): Promise<Task[]> => {
   const { data } = await api.get<ApiResponse<Task[]>>('/tasks', { params });
   return data.data;

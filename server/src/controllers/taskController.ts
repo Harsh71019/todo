@@ -4,10 +4,17 @@ import Tag from '../models/Tag.js';
 import { createTaskSchema, updateTaskSchema } from '../types/task.js';
 import { ZodError } from 'zod';
 
-// GET /api/tasks — List all tasks with optional filters
+// GET /api/tasks — List all tasks with optional filters and pagination
 export const getAllTasks = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { status, priority, sort = '-createdAt', search, tag, view = 'active' } = req.query;
+    const {
+      status, priority, sort = '-createdAt', search, tag, view = 'active',
+      page = '1', limit = '100',
+    } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(200, Math.max(1, parseInt(limit as string, 10) || 100));
+    const skip = (pageNum - 1) * limitNum;
 
     const filter: Record<string, unknown> = { userId: req.userId };
 
@@ -52,9 +59,19 @@ export const getAllTasks = async (req: Request, res: Response, next: NextFunctio
       ];
     }
 
-    const tasks = await Task.find(filter).sort(sort as string).lean();
+    const [tasks, total] = await Promise.all([
+      Task.find(filter).sort(sort as string).skip(skip).limit(limitNum).lean(),
+      Task.countDocuments(filter),
+    ]);
 
-    res.json({ success: true, count: tasks.length, data: tasks });
+    res.json({
+      success: true,
+      count: tasks.length,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      data: tasks,
+    });
   } catch (error) {
     next(error);
   }

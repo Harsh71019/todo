@@ -57,6 +57,9 @@ export interface ApiResponse<T> {
   success: boolean;
   data: T;
   count?: number;
+  total?: number;
+  page?: number;
+  totalPages?: number;
   error?: string;
 }
 
