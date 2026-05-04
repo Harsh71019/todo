@@ -27,6 +27,15 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
+// Fail fast if required environment variables are missing
+const REQUIRED_ENV = ['JWT_SECRET', 'MONGODB_URI'] as const;
+for (const key of REQUIRED_ENV) {
+  if (!process.env[key]) {
+    console.error(`❌ Missing required environment variable: ${key}`);
+    process.exit(1);
+  }
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
