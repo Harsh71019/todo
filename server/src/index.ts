@@ -40,14 +40,18 @@ for (const key of REQUIRED_ENV) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(helmet({
-  // Allow the SPA to load in the same Express origin without CSP blocking
-  contentSecurityPolicy: process.env.NODE_ENV === 'production',
-}));
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true,
-}));
+app.use(
+  helmet({
+    // Allow the SPA to load in the same Express origin without CSP blocking
+    contentSecurityPolicy: process.env.NODE_ENV === 'production',
+  }),
+);
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true,
+  }),
+);
 
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
@@ -55,7 +59,10 @@ app.use(cookieParser());
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 200,
-  message: { success: false, error: 'Too many requests from this IP, please try again later.' },
+  message: {
+    success: false,
+    error: 'Too many requests from this IP, please try again later.',
+  },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -63,13 +70,16 @@ const limiter = rateLimit({
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
-  message: { success: false, error: 'Too many auth attempts, please try again later.' },
+  message: {
+    success: false,
+    error: 'Too many auth attempts, please try again later.',
+  },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-app.use('/api', limiter);
-app.use('/api/auth', authLimiter);
+// app.use('/api', limiter);
+// app.use('/api/auth', authLimiter);
 
 // Routes
 app.get('/api/health', (_req, res) => {
@@ -84,7 +94,8 @@ app.use('/api/focus', focusRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 
 // Serve React frontend
-const isProduction = __dirname.includes('dist') || __dirname.includes('app.asar');
+const isProduction =
+  __dirname.includes('dist') || __dirname.includes('app.asar');
 const clientDistPath = isProduction
   ? path.join(__dirname, '../public')
   : path.join(__dirname, '../../client/dist');
