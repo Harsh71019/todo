@@ -19,6 +19,7 @@ FocusSession {
   startedAt: Date           // when Start was clicked
   endedAt?: Date            // when stopped/paused/task completed
   durationSeconds: number   // computed on end: (endedAt - startedAt) / 1000
+  isPomodoro: boolean       // true if durationSeconds >= 25 * 60
   status: 'active' | 'completed' | 'abandoned'
                             // active   = timer is running right now
                             // completed = user hit "Finish Task"
@@ -35,15 +36,23 @@ FocusSession {
 
 ### Task model additions (denormalized for performance)
 
-Add two fields to the existing `Task` schema so we can show focus time on task cards without joining:
+Add these fields to the existing `Task` schema so we can show focus data on task cards without joining every time:
 
 ```typescript
 Task {
   ...existing fields...
   totalFocusSeconds: number   // running total, updated on session end (default 0)
+  completedPomodoros: number  // incremented each time a full 25-min session completes (default 0)
   lastFocusedAt?: Date        // when the most recent session started
 }
 ```
+
+> **Why store `completedPomodoros` explicitly instead of deriving it?**
+> Counting completed sessions ≥ 25 min requires an aggregation join on every task card render. A simple counter on the task is a single-field read. The trade-off is a slightly more complex write (increment on stop) which happens far less often than reads. Worth it.
+
+A session counts as a completed pomodoro if:
+- `status === 'completed'` (user hit Finish Task), **or**
+- `status === 'abandoned'` but `durationSeconds >= 25 * 60` (user ran the full timer then stopped manually)
 
 ---
 
@@ -139,13 +148,17 @@ On `TimerProvider` mount, call `GET /api/focus/active`. If a session is returned
 
 This means refreshing the page restores the running timer.
 
-### 3. `TaskCard` — show total focus time
+### 3. `TaskCard` — show focus stats
 
-Add a focus time badge to the metadata row (next to the "In focus" dot):
+Add to the metadata row (only shown if the task has been focused on):
 
 ```
-🕐  1h 23m focused   (only shown if totalFocusSeconds > 0)
+🍅 3   ·   1h 23m focused
 ```
+
+- `🍅 3` = `completedPomodoros` count
+- `1h 23m` = `totalFocusSeconds` formatted
+- Both come directly off the task document — no extra fetch
 
 ### 4. `TaskDetailModal` — session history
 
@@ -154,18 +167,22 @@ Add a "Focus History" section in the left panel listing past sessions:
 ```
 Focus History
 ─────────────
-▸ May 6, 10:30am   25m   ✓ completed
-▸ May 5,  2:15pm   18m   ✗ abandoned
-▸ May 5, 11:00am   12m   ✗ abandoned
-Total: 55m across 3 sessions
+🍅 May 6, 10:30am   25m   ✓ completed
+   May 5,  2:15pm   18m   ✗ abandoned
+   May 5, 11:00am   12m   ✗ abandoned
+
+🍅 3 pomodoros  ·  Total: 55m across 3 sessions
 ```
+
+The 🍅 icon appears only on rows where `isPomodoro === true`.
 
 ### 5. `DashboardPage` — new Focus Stats section
 
 A new card on the dashboard showing:
+- **Pomodoros today** (count)
 - **Focus time today** (minutes)
 - **Focus time this week** (bar chart, one bar per day)
-- **Top focused tasks** (ranked list by total focus seconds)
+- **Top focused tasks** (ranked list by `completedPomodoros` + `totalFocusSeconds`)
 
 ---
 
