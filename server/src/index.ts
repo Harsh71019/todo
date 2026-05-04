@@ -17,6 +17,7 @@ import authRoutes from './routes/authRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import statsRoutes from './routes/statsRoutes.js';
 import tagRoutes from './routes/tagRoutes.js';
+import focusRoutes from './routes/focusRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 process.on('uncaughtException', (err) => {
@@ -54,6 +55,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/tags', tagRoutes);
+app.use('/api/focus', focusRoutes);
 
 // Serve React frontend
 const isProduction = __dirname.includes('dist') || __dirname.includes('app.asar');

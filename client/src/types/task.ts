@@ -24,6 +24,9 @@ export interface Task {
   completedAt?: string;
   deletedAt?: string;
   updatedAt: string;
+  totalFocusSeconds: number;
+  completedPomodoros: number;
+  lastFocusedAt?: string;
 }
 
 export interface CreateTaskPayload {

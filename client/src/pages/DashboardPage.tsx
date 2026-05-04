@@ -20,6 +20,8 @@ import {
   Bar,
 } from 'recharts';
 import * as taskApi from '../services/taskApi';
+import * as focusApi from '../services/focusApi';
+import type { FocusTodayStats, FocusWeeklyStat, FocusByTaskStat } from '../types/focusSession';
 import type {
   StatsOverview,
   WeeklyActivity,
@@ -49,13 +51,16 @@ const DashboardPage = () => {
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDayStats[]>([]);
   const [focusDrift, setFocusDrift] = useState<FocusDriftStats[]>([]);
   const [tagEfficiency, setTagEfficiency] = useState<TagEfficiencyStats[]>([]);
+  const [focusToday, setFocusToday] = useState<FocusTodayStats | null>(null);
+  const [focusWeekly, setFocusWeekly] = useState<FocusWeeklyStat[]>([]);
+  const [focusByTask, setFocusByTask] = useState<FocusByTaskStat[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         setLoading(true);
-        const [oData, wData, mData, pData, tData, dData, vData, hData, todData, fdData, teData] =
+        const [oData, wData, mData, pData, tData, dData, vData, hData, todData, fdData, teData, ftData, fwData, fbtData] =
           await Promise.all([
             taskApi.getStatsOverview(),
             taskApi.getWeeklyActivity(),
@@ -68,6 +73,9 @@ const DashboardPage = () => {
             taskApi.getTimeOfDayStats(),
             taskApi.getFocusDriftStats(),
             taskApi.getTagEfficiencyStats(),
+            focusApi.getFocusToday(),
+            focusApi.getFocusWeekly(),
+            focusApi.getFocusByTask(),
           ]);
         setOverview(oData);
         setWeekly(wData);
@@ -80,6 +88,9 @@ const DashboardPage = () => {
         setTimeOfDay(todData);
         setFocusDrift(fdData);
         setTagEfficiency(teData);
+        setFocusToday(ftData);
+        setFocusWeekly(fwData);
+        setFocusByTask(fbtData);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : 'Failed to load dashboard',
@@ -141,6 +152,15 @@ const DashboardPage = () => {
       </div>
     );
   }
+
+  const formatFocusTime = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    const m = Math.floor(seconds / 60);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    const rem = m % 60;
+    return rem > 0 ? `${h}h ${rem}m` : `${h}h`;
+  };
 
   const PRIORITY_COLORS = {
     low: '#10b981', // emerald-500
@@ -331,6 +351,101 @@ const DashboardPage = () => {
       <div className='mb-8'>
         <HeatmapChart data={heatmap} />
       </div>
+
+      {/* Focus Stats */}
+      {focusToday && (
+        <section className='mb-8'>
+          <h3 className='text-base font-bold text-slate-800 dark:text-slate-100 mb-4'>Focus Today</h3>
+          <div className='grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6'>
+            <div className='bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 shadow-sm flex items-center gap-4'>
+              <div className='w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0'>
+                <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/></svg>
+              </div>
+              <div>
+                <p className='text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500'>Time Focused</p>
+                <p className='text-2xl font-bold text-slate-800 dark:text-slate-100'>{formatFocusTime(focusToday.totalSeconds)}</p>
+              </div>
+            </div>
+            <div className='bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 shadow-sm flex items-center gap-4'>
+              <div className='w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 text-xl'>
+                🍅
+              </div>
+              <div>
+                <p className='text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500'>Pomodoros</p>
+                <p className='text-2xl font-bold text-slate-800 dark:text-slate-100'>{focusToday.totalPomodoros}</p>
+              </div>
+            </div>
+            <div className='bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 shadow-sm flex items-center gap-4'>
+              <div className='w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0'>
+                <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'><path d='M22 12h-4l-3 9L9 3l-3 9H2'/></svg>
+              </div>
+              <div>
+                <p className='text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500'>Sessions</p>
+                <p className='text-2xl font-bold text-slate-800 dark:text-slate-100'>{focusToday.totalSessions}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+            {/* Weekly Focus Chart */}
+            <div className='bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6 shadow-sm'>
+              <h3 className='text-base font-bold text-slate-800 dark:text-slate-100 mb-1'>Weekly Focus Time</h3>
+              <p className='text-xs text-slate-500 dark:text-slate-400 mb-6'>Minutes focused per day over the last 7 days</p>
+              <div className='h-48 w-full'>
+                <ResponsiveContainer width='100%' height='100%'>
+                  <BarChart
+                    data={focusWeekly.map(d => ({
+                      day: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
+                      minutes: Math.round(d.totalSeconds / 60),
+                      pomodoros: d.pomodoros,
+                    }))}
+                    margin={{ top: 0, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray='3 3' vertical={false} stroke='#e2e8f0' />
+                    <XAxis dataKey='day' axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                      formatter={(v: number, name: string) => [name === 'minutes' ? `${v}m` : v, name === 'minutes' ? 'Focus time' : 'Pomodoros']}
+                    />
+                    <Bar dataKey='minutes' name='Focus time' fill='#8b5cf6' radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Top Tasks by Focus */}
+            <div className='bg-white dark:bg-black border border-slate-200 dark:border-neutral-800 rounded-2xl p-5 sm:p-6 shadow-sm'>
+              <h3 className='text-base font-bold text-slate-800 dark:text-slate-100 mb-1'>Top Focused Tasks</h3>
+              <p className='text-xs text-slate-500 dark:text-slate-400 mb-6'>Tasks with the most focus time</p>
+              {focusByTask.length === 0 ? (
+                <div className='flex items-center justify-center h-48 text-sm text-slate-400'>No focus sessions yet</div>
+              ) : (
+                <div className='space-y-3'>
+                  {focusByTask.slice(0, 5).map((t, i) => (
+                    <div key={t.taskId} className='flex items-center gap-3'>
+                      <span className='text-xs font-bold text-slate-400 w-4 shrink-0'>{i + 1}</span>
+                      <div className='flex-1 min-w-0'>
+                        <p className='text-sm font-medium text-slate-700 dark:text-slate-300 truncate'>{t.title}</p>
+                        <div className='flex items-center gap-2 mt-0.5'>
+                          <div className='flex-1 h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden'>
+                            <div
+                              className='h-full bg-violet-500 rounded-full'
+                              style={{ width: `${Math.min(100, (t.totalSeconds / (focusByTask[0]?.totalSeconds || 1)) * 100)}%` }}
+                            />
+                          </div>
+                          <span className='text-xs text-slate-400 shrink-0'>{formatFocusTime(t.totalSeconds)}</span>
+                          {t.pomodoros > 0 && <span className='text-xs text-slate-400 shrink-0'>🍅{t.pomodoros}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8'>
         {/* Radar Chart: Productivity by Time of Day */}

@@ -90,6 +90,15 @@ const TaskCard = ({
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   };
 
+  const formatFocusTime = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    const m = Math.floor(seconds / 60);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    const rem = m % 60;
+    return rem > 0 ? `${h}h ${rem}m` : `${h}h`;
+  };
+
   const completedSubtasksCount =
     task.subtasks?.filter((st) => st.isCompleted).length || 0;
   const totalSubtasksCount = task.subtasks?.length || 0;
@@ -276,6 +285,13 @@ const TaskCard = ({
                   Est. {task.estimatedMinutes}m
                 </span>
               )}
+
+            {task.totalFocusSeconds > 0 && !isDeleted && (
+              <span className='flex items-center gap-1.5 text-xs font-medium text-violet-600 dark:text-violet-400'>
+                {task.completedPomodoros > 0 && <>🍅 {task.completedPomodoros} · </>}
+                {formatFocusTime(task.totalFocusSeconds)} focused
+              </span>
+            )}
 
             {isCompleted && task.completedAt && !isDeleted && (
               <span className='flex items-center gap-1.5 text-xs font-medium text-emerald-600'>

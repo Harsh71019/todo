@@ -31,12 +31,15 @@ export interface ITask {
   subtasks: ISubtask[];
   isLongTerm: boolean;
   isDeleted: boolean;
+  isArchived?: boolean;
   dueDate?: Date;
   createdAt: Date;
   completedAt?: Date;
   deletedAt?: Date;
   updatedAt: Date;
-  isArchived?: boolean;
+  totalFocusSeconds: number;
+  completedPomodoros: number;
+  lastFocusedAt?: Date;
 }
 
 export const subtaskSchema = z.object({

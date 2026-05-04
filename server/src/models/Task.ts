@@ -61,6 +61,18 @@ const taskSchema = new Schema<ITaskDocument>(
       type: Boolean,
       default: false,
     },
+    totalFocusSeconds: {
+      type: Number,
+      default: 0,
+    },
+    completedPomodoros: {
+      type: Number,
+      default: 0,
+    },
+    lastFocusedAt: {
+      type: Date,
+      default: null,
+    },
     dueDate: {
       type: Date,
       default: null,
