@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { TimerProvider } from './context/TimerContext';
 import Sidebar from './components/Sidebar';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
@@ -84,6 +85,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <TimerProvider>
       <Toaster
         position="bottom-right"
         toastOptions={{
@@ -105,6 +107,7 @@ function App() {
           }
         />
       </Routes>
+    </TimerProvider>
     </BrowserRouter>
   );
 }

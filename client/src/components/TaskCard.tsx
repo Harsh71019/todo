@@ -1,6 +1,7 @@
 import type { Task } from '../types/task';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useTimer } from '../context/TimerContext';
 
 interface TaskCardProps {
   task: Task;
@@ -32,6 +33,8 @@ const TaskCard = ({
   const isCompleted = task.status === 'completed';
   const isDeleted = task.isDeleted;
   const isArchived = task.isArchived;
+  const { activeTask, isActive } = useTimer();
+  const isFocused = activeTask?._id === task._id;
 
   const isOverdue = (() => {
     if (!task.dueDate || task.status !== 'pending') return false;
@@ -53,9 +56,12 @@ const TaskCard = ({
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-IN', {
-      day: 'numeric',
+    const now = new Date();
+    const sameYear = date.getFullYear() === now.getFullYear();
+    return date.toLocaleDateString('en-US', {
       month: 'short',
+      day: 'numeric',
+      ...(!sameYear && { year: 'numeric' }),
     });
   };
 
@@ -67,11 +73,10 @@ const TaskCard = ({
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Just now';
+    if (diffMins < 1) return 'just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return formatDate(dateStr);
+    return `${diffDays}d ago`;
   };
 
   const getTimeTaken = (startStr: string, endStr: string) => {
@@ -100,7 +105,9 @@ const TaskCard = ({
           ? 'bg-red-50/50 border-red-100 opacity-80 dark:bg-red-900/10 dark:border-red-900/30'
           : isCompleted
             ? 'opacity-60 bg-slate-50 border-slate-200 dark:bg-[#0a0a0a] dark:border-neutral-800'
-            : 'bg-white border-slate-200 hover:border-blue-200 dark:bg-black dark:border-neutral-800 dark:hover:border-blue-500'
+            : isFocused
+              ? 'bg-white border-blue-400 dark:bg-black dark:border-blue-500 shadow-md shadow-blue-100 dark:shadow-blue-900/20'
+              : 'bg-white border-slate-200 hover:border-blue-200 dark:bg-black dark:border-neutral-800 dark:hover:border-blue-500'
       } ${isOverdue && !isDeleted ? 'border-l-4 border-l-red-500 dark:border-l-red-600' : ''}`}
       onClick={handleCardClick}
     >
@@ -206,6 +213,15 @@ const TaskCard = ({
           )}
 
           <div className='flex flex-wrap items-center gap-x-4 gap-y-2 mt-2'>
+            {isFocused && (
+              <span className='flex items-center gap-1.5 text-xs font-medium text-red-500 dark:text-red-400'>
+                <span className='relative flex h-2 w-2'>
+                  {isActive && <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75' />}
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isActive ? 'bg-red-500' : 'bg-slate-300 dark:bg-neutral-600'}`} />
+                </span>
+                {isActive ? 'In focus' : 'Paused'}
+              </span>
+            )}
             <span className='flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium'>
               <svg
                 width='12'
@@ -218,6 +234,8 @@ const TaskCard = ({
                 <circle cx='6' cy='6' r='5' />
                 <path d='M6 3v3l2 1' strokeLinecap='round' />
               </svg>
+              {formatDate(task.createdAt)}
+              <span className='text-slate-300 dark:text-neutral-600'>·</span>
               {getRelativeTime(task.createdAt)}
             </span>
 

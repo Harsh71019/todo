@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import type { Task } from '../types/task';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useTimer } from '../context/TimerContext';
 
 interface TaskDetailModalProps {
   task: Task;
@@ -13,28 +14,22 @@ interface TaskDetailModalProps {
   onEdit?: (task: Task) => void;
 }
 
-const TaskDetailModal = ({ 
-  task, 
-  onClose, 
-  onToggle, 
+const TaskDetailModal = ({
+  task,
+  onClose,
+  onToggle,
   onToggleSubtask,
   onDelete,
   onArchive,
   onEdit
 }: TaskDetailModalProps) => {
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [isActive, setIsActive] = useState(false);
+  const { activeTask, timeLeft, isActive, startTimer, pauseTimer, resumeTimer, resetTimer, stopTimer } = useTimer();
   const isCompleted = task.status === 'completed';
 
+  // Initialize timer for this task when modal opens (won't reset if already running for same task)
   useEffect(() => {
-    let interval: number | undefined;
-    if (isActive) {
-      interval = window.setInterval(() => {
-        setTimeLeft((prev) => (prev <= 1 ? 0 : prev - 1));
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isActive]);
+    startTimer(task);
+  }, [task._id]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -42,7 +37,9 @@ const TaskDetailModal = ({
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const progress = ((25 * 60 - timeLeft) / (25 * 60)) * 100;
+  const POMODORO = 25 * 60;
+  const displayTimeLeft = activeTask?._id === task._id ? timeLeft : POMODORO;
+  const progress = ((POMODORO - displayTimeLeft) / POMODORO) * 100;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 dark:bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-300">
@@ -145,26 +142,33 @@ const TaskDetailModal = ({
 
           <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-2">Focus Mode</h4>
           <div className="text-6xl font-bold text-slate-900 dark:text-white tabular-nums tracking-tighter mb-10 font-mono">
-            {formatTime(timeLeft)}
+            {formatTime(displayTimeLeft)}
           </div>
 
           <div className="flex flex-col gap-3 w-full">
             <button
-              onClick={() => setIsActive(!isActive)}
+              onClick={isActive ? pauseTimer : resumeTimer}
               className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all ${
-                isActive 
-                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' 
+                isActive
+                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                   : 'bg-blue-600 text-white shadow-xl shadow-blue-500/20'
               }`}
             >
               {isActive ? 'Pause' : 'Start Focus'}
             </button>
-            
+
             <button
-              onClick={() => { onToggle(task._id); onClose(); }}
+              onClick={() => { resetTimer(); }}
+              className="w-full py-2 rounded-2xl font-bold uppercase tracking-widest text-xs text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 transition-all"
+            >
+              Reset
+            </button>
+
+            <button
+              onClick={() => { onToggle(task._id); stopTimer(); onClose(); }}
               className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all ${
-                isCompleted 
-                  ? 'bg-slate-200 text-slate-400 dark:bg-neutral-800 dark:text-neutral-600 cursor-not-allowed' 
+                isCompleted
+                  ? 'bg-slate-200 text-slate-400 dark:bg-neutral-800 dark:text-neutral-600 cursor-not-allowed'
                   : 'bg-emerald-500 text-white shadow-xl shadow-emerald-500/20'
               }`}
               disabled={isCompleted}
