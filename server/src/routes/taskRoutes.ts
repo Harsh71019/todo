@@ -4,9 +4,10 @@ import {
   createTask,
   updateTask,
   deleteTask,
+  restoreTask,
   permanentlyDeleteTask,
   archiveTask,
-  unarchiveTask
+  unarchiveTask,
 } from '../controllers/taskController.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 
@@ -17,6 +18,7 @@ router.use(requireAuth);
 router.get('/', getAllTasks);
 router.post('/', createTask);
 router.patch('/:id', updateTask);
+router.patch('/:id/restore', restoreTask);
 router.patch('/:id/archive', archiveTask);
 router.patch('/:id/unarchive', unarchiveTask);
 router.delete('/:id', deleteTask);

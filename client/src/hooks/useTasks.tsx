@@ -194,10 +194,7 @@ export const useTasks = (
   };
 
   const restoreTask = async (id: string) => {
-    await taskApi.updateTask(id, { isDeleted: false });
-    // Trigger a refetch so the list correctly reflects reality in both contexts:
-    // - From Trash view: the task disappears from the trash list
-    // - From Undo toast in active view: the task reappears
+    await taskApi.restoreTask(id);
     refresh();
     toast.success('Task restored');
   };

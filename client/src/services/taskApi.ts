@@ -65,6 +65,11 @@ export const permanentlyDeleteTask = async (id: string): Promise<void> => {
   await api.delete(`/tasks/${id}/permanent`);
 };
 
+export const restoreTask = async (id: string): Promise<Task> => {
+  const { data } = await api.patch<ApiResponse<Task>>(`/tasks/${id}/restore`);
+  return data.data;
+};
+
 // ─── Stats ───────────────────────────────────────────────
 
 export const getStatsOverview = async (): Promise<StatsOverview> => {

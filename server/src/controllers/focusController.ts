@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import FocusSession from '../models/FocusSession.js';
 import Task from '../models/Task.js';
 import { startSessionSchema, stopSessionSchema } from '../types/focus.js';
@@ -10,19 +11,20 @@ export const startSession = async (req: Request, res: Response, next: NextFuncti
   try {
     const { taskId } = startSessionSchema.parse(req.body);
 
-    const task = await Task.findById(taskId).lean();
+    const task = await Task.findOne({ _id: taskId, userId: req.userId }).lean();
     if (!task) {
       res.status(404).json({ success: false, error: 'Task not found' });
       return;
     }
 
-    // Abandon any currently active session before starting a new one
+    // Abandon only this user's active sessions
     await FocusSession.updateMany(
-      { status: 'active' },
+      { userId: req.userId, status: 'active' },
       { $set: { status: 'abandoned', endedAt: new Date() } },
     );
 
     const session = await FocusSession.create({
+      userId: req.userId,
       taskId,
       startedAt: new Date(),
       status: 'active',
@@ -41,7 +43,7 @@ export const stopSession = async (req: Request, res: Response, next: NextFunctio
   try {
     const { status } = stopSessionSchema.parse(req.body);
 
-    const session = await FocusSession.findById(req.params.sessionId);
+    const session = await FocusSession.findOne({ _id: req.params.sessionId, userId: req.userId });
     if (!session) {
       res.status(404).json({ success: false, error: 'Session not found' });
       return;
@@ -61,7 +63,6 @@ export const stopSession = async (req: Request, res: Response, next: NextFunctio
     session.status = status;
     await session.save();
 
-    // Update denormalized task fields
     const inc: Record<string, number> = { totalFocusSeconds: durationSeconds };
     if (isPomodoro) inc.completedPomodoros = 1;
     await Task.findByIdAndUpdate(session.taskId, { $inc: inc });
@@ -75,16 +76,12 @@ export const stopSession = async (req: Request, res: Response, next: NextFunctio
 // GET /api/focus/active
 export const getActiveSession = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const session = await FocusSession.findOne({ status: 'active' })
+    const session = await FocusSession.findOne({ userId: req.userId, status: 'active' })
       .populate('taskId')
       .lean();
 
-    if (!session) {
-      res.status(204).end();
-      return;
-    }
-
-    res.json({ success: true, data: session });
+    // Return data: null consistently — avoids special 204 handling on the client
+    res.json({ success: true, data: session ?? null });
   } catch (error) {
     next(error);
   }
@@ -94,6 +91,7 @@ export const getActiveSession = async (req: Request, res: Response, next: NextFu
 export const getSessionsByTask = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const sessions = await FocusSession.find({
+      userId: req.userId,
       taskId: req.params.taskId,
       status: { $ne: 'active' },
     })
@@ -110,11 +108,12 @@ export const getSessionsByTask = async (req: Request, res: Response, next: NextF
 // GET /api/focus/stats/today
 export const getFocusToday = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    const uid = new mongoose.Types.ObjectId(req.userId!);
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
     const result = await FocusSession.aggregate([
-      { $match: { startedAt: { $gte: startOfDay }, status: { $ne: 'active' } } },
+      { $match: { userId: uid, startedAt: { $gte: startOfDay }, status: { $ne: 'active' } } },
       {
         $group: {
           _id: null,
@@ -135,12 +134,13 @@ export const getFocusToday = async (req: Request, res: Response, next: NextFunct
 // GET /api/focus/stats/weekly
 export const getFocusWeekly = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    const uid = new mongoose.Types.ObjectId(req.userId!);
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
     const result = await FocusSession.aggregate([
-      { $match: { startedAt: { $gte: sevenDaysAgo }, status: { $ne: 'active' } } },
+      { $match: { userId: uid, startedAt: { $gte: sevenDaysAgo }, status: { $ne: 'active' } } },
       {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$startedAt' } },
@@ -151,7 +151,10 @@ export const getFocusWeekly = async (req: Request, res: Response, next: NextFunc
       { $sort: { _id: 1 } },
     ]);
 
-    res.json({ success: true, data: result.map(r => ({ date: r._id, totalSeconds: r.totalSeconds, pomodoros: r.pomodoros })) });
+    res.json({
+      success: true,
+      data: result.map((r) => ({ date: r._id, totalSeconds: r.totalSeconds, pomodoros: r.pomodoros })),
+    });
   } catch (error) {
     next(error);
   }
@@ -160,8 +163,9 @@ export const getFocusWeekly = async (req: Request, res: Response, next: NextFunc
 // GET /api/focus/stats/by-task
 export const getFocusByTask = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    const uid = new mongoose.Types.ObjectId(req.userId!);
     const result = await FocusSession.aggregate([
-      { $match: { status: { $ne: 'active' } } },
+      { $match: { userId: uid, status: { $ne: 'active' } } },
       {
         $group: {
           _id: '$taskId',
@@ -172,24 +176,9 @@ export const getFocusByTask = async (req: Request, res: Response, next: NextFunc
       },
       { $sort: { totalSeconds: -1 } },
       { $limit: 10 },
-      {
-        $lookup: {
-          from: 'tasks',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'task',
-        },
-      },
+      { $lookup: { from: 'tasks', localField: '_id', foreignField: '_id', as: 'task' } },
       { $unwind: '$task' },
-      {
-        $project: {
-          taskId: '$_id',
-          title: '$task.title',
-          totalSeconds: 1,
-          pomodoros: 1,
-          sessions: 1,
-        },
-      },
+      { $project: { taskId: '$_id', title: '$task.title', totalSeconds: 1, pomodoros: 1, sessions: 1 } },
     ]);
 
     res.json({ success: true, data: result });

@@ -17,9 +17,8 @@ export const stopSession = async (sessionId: string, status: 'completed' | 'aban
 };
 
 export const getActiveSession = async (): Promise<ActiveSession | null> => {
-  const res = await api.get('/active');
-  if (res.status === 204) return null;
-  return res.data.data;
+  const { data } = await api.get('/active');
+  return data.data ?? null;
 };
 
 export const getSessionsByTask = async (taskId: string): Promise<FocusSession[]> => {

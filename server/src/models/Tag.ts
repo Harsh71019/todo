@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ITag {
   _id: string;
+  userId: string;
   name: string;
   color: string;
   isDefault: boolean;
@@ -14,10 +15,14 @@ export interface ITagDocument extends Omit<ITag, '_id'>, Document {}
 
 const tagSchema = new Schema<ITagDocument>(
   {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'User ID is required'],
+    },
     name: {
       type: String,
       required: [true, 'Tag name is required'],
-      unique: true,
       trim: true,
       lowercase: true,
       maxlength: [30, 'Tag name cannot exceed 30 characters'],
@@ -44,8 +49,8 @@ const tagSchema = new Schema<ITagDocument>(
   },
 );
 
-tagSchema.index({ name: 1 }, { unique: true });
-tagSchema.index({ isDefault: 1 });
+tagSchema.index({ userId: 1, name: 1 }, { unique: true }); // name unique per user
+tagSchema.index({ userId: 1, isDefault: 1 });
 
 const Tag = mongoose.model<ITagDocument>('Tag', tagSchema);
 

@@ -49,8 +49,6 @@ export interface UpdateTaskPayload {
   estimatedMinutes?: number;
   subtasks?: Subtask[];
   isLongTerm?: boolean;
-  isDeleted?: boolean;
-  isArchived?: boolean;
   dueDate?: string | null;
 }
 
