@@ -45,7 +45,17 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-// app.use('/api', limiter);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { success: false, error: 'Too many auth attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api', limiter);
+app.use('/api/auth', authLimiter);
 
 // Routes
 app.get('/api/health', (_req, res) => {
