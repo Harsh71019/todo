@@ -40,6 +40,9 @@ for (const key of REQUIRED_ENV) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Required so express-rate-limit uses the real client IP behind nginx
+app.set('trust proxy', 1);
+
 app.use(
   helmet({
     // Allow the SPA to load in the same Express origin without CSP blocking
@@ -78,8 +81,8 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// app.use('/api', limiter);
-// app.use('/api/auth', authLimiter);
+app.use('/api', limiter);
+app.use('/api/auth', authLimiter);
 
 // Routes
 app.get('/api/health', (_req, res) => {

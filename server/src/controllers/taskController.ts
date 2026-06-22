@@ -7,10 +7,17 @@ import { ZodError } from 'zod';
 // GET /api/tasks — List all tasks with optional filters and pagination
 export const getAllTasks = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    const ALLOWED_SORTS = new Set([
+      'createdAt', '-createdAt', 'updatedAt', '-updatedAt',
+      'dueDate', '-dueDate', 'priority', '-priority', 'title', '-title',
+    ]);
+
     const {
-      status, priority, sort = '-createdAt', search, tag, view = 'active',
+      status, priority, search, tag, view = 'active',
       page = '1', limit = '100',
     } = req.query;
+    const rawSort = typeof req.query.sort === 'string' ? req.query.sort : '-createdAt';
+    const sort = ALLOWED_SORTS.has(rawSort) ? rawSort : '-createdAt';
 
     const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
     const limitNum = Math.min(200, Math.max(1, parseInt(limit as string, 10) || 100));

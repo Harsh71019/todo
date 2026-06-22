@@ -62,7 +62,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 };
 
 export const logout = (_req: Request, res: Response): void => {
-  res.clearCookie('auth_token');
+  res.clearCookie('auth_token', COOKIE_OPTS);
   res.json({ success: true });
 };
 
