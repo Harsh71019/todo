@@ -1,4 +1,12 @@
 node_modules/
 dist/
 .env
+*.env.*
 *.log
+
+# macOS
+.DS_Store
+
+# Build artifacts
+main.cjs
+public/
