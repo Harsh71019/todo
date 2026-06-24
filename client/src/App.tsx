@@ -13,6 +13,7 @@ import CompletedPage from './pages/CompletedPage';
 import TrashPage from './pages/TrashPage';
 import SubscriptionsPage from './pages/SubscriptionsPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import DebugSentryPage from './pages/DebugSentryPage';
 import { Toaster } from 'react-hot-toast';
 
 function AppLayout({ isDarkMode, toggleDarkMode }: { isDarkMode: boolean; toggleDarkMode: () => void }) {
@@ -100,6 +101,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/debug-sentry" element={<DebugSentryPage />} />
         <Route
           path="/*"
           element={
