@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import * as Sentry from '@sentry/node';
 
 interface AppError extends Error {
   statusCode?: number;
@@ -35,7 +36,10 @@ export const errorHandler = (
   const message = statusCode === 500 ? 'Internal Server Error' : err.message;
 
   console.error(`❌ [${statusCode}] ${err.message}`);
-  if (statusCode === 500) console.error(err.stack);
+  if (statusCode === 500) {
+    console.error(err.stack);
+    Sentry.captureException(err);
+  }
 
   res.status(statusCode).json({
     success: false,

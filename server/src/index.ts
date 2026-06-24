@@ -1,6 +1,8 @@
+import './instrument.js';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import { config as dotenvConfig } from 'dotenv';
+import * as Sentry from '@sentry/node';
 
 // Resolve __dirname first so dotenv gets the explicit path to server/.env
 const __filename = fileURLToPath(import.meta.url);
@@ -25,6 +27,7 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 process.on('uncaughtException', (err) => {
   console.error('UNCAUGHT EXCEPTION! 💥 Shutting down...');
   console.error(err.name, err.message, err.stack);
+  Sentry.captureException(err);
   process.exit(1);
 });
 
@@ -110,8 +113,12 @@ app.get(/(.*)/, (req, res, next) => {
   res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
+// TEMPORARY — remove after confirming errors reach GlitchTip
+app.get('/api/debug-sentry', () => { throw new Error('GlitchTip test error — backend'); });
+
 // Only catch unmatched /api routes — the SPA catch-all above handles everything else
 app.use('/api', notFound);
+Sentry.setupExpressErrorHandler(app);
 app.use(errorHandler);
 
 const start = async () => {
@@ -123,6 +130,7 @@ const start = async () => {
   process.on('unhandledRejection', (err: Error) => {
     console.error('UNHANDLED REJECTION! 💥 Shutting down...');
     console.error(err.name, err.message);
+    Sentry.captureException(err);
     server.close(() => process.exit(1));
   });
 
