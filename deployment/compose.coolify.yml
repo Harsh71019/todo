@@ -1,0 +1,42 @@
+services:
+  server:
+    image: ghcr.io/harsh71019/todo-server:${TODO_IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "5001"
+      MONGODB_URI: ${MONGODB_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      BETTER_AUTH_API_KEY: ${BETTER_AUTH_API_KEY:-}
+      CLIENT_URL: ${CLIENT_URL}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5001/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - todo-net
+  client:
+    image: ghcr.io/harsh71019/todo-client:${TODO_IMAGE_TAG}
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      server:
+        condition: service_healthy
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - todo-net
+networks:
+  todo-net:
+    driver: bridge
