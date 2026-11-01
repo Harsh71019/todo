@@ -1,0 +1,85 @@
+name: CI and Coolify pilot
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        component: [client, server]
+    defaults:
+      run:
+        working-directory: ${{ matrix.component }}
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ${{ matrix.component }}/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  images:
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        component: [client, server]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.component }}
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/harsh71019/todo-${{ matrix.component }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          build-args: |
+            VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN }}
+          cache-from: type=gha,scope=todo-${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=todo-${{ matrix.component }}
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: images
+    runs-on: [self-hosted, linux, x64, todo-deploy]
+    timeout-minutes: 15
+    concurrency:
+      group: todo-coolify-pilot
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy verified images and wait for health
+        env:
+          COOLIFY_URL: http://127.0.0.1:8000/api/v1
+          COOLIFY_APP_UUID: ${{ vars.COOLIFY_APP_UUID }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          RELEASE_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python3 scripts/deploy-coolify.py
