@@ -24,7 +24,7 @@ services:
     image: ghcr.io/harsh71019/todo-client:${TODO_IMAGE_TAG}
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "3100:80"
     depends_on:
       server:
         condition: service_healthy

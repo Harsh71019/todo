@@ -82,4 +82,5 @@ jobs:
           RELEASE_SHA: ${{ github.sha }}
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          HEALTH_URL: ${{ vars.HEALTH_URL }}
         run: python3 scripts/deploy-coolify.py

@@ -69,7 +69,7 @@ else:
 # Health failures are deployment failures, not successful workflow exits.
 for attempt in range(18):
     try:
-        with urllib.request.urlopen("http://127.0.0.1:3000/api/health", timeout=5) as response:
+        with urllib.request.urlopen(os.environ["HEALTH_URL"], timeout=5) as response:
             healthy = response.status == 200 and json.load(response).get("status") == "ok"
         if healthy:
             break
@@ -78,4 +78,4 @@ for attempt in range(18):
     time.sleep(5)
 else:
     raise SystemExit("Todo did not become healthy after deployment")
-print(f"Todo release {sha} is healthy at http://192.168.0.190:3000")
+print(f"Todo release {sha} is healthy at {os.environ['HEALTH_URL']}")
